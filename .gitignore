@@ -1,1 +1,12 @@
 .vs/
+
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Secrets
+appsettings.Development.json
