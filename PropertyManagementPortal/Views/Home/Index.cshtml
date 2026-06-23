@@ -1,8 +1,79 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="hero">
+    <div class="container">
+        <h1>Property Management Portal</h1>
+        <p>A centralized platform to manage properties, tenants, maintenance requests, and payments — all in one place.</p>
+        @if (!User.Identity!.IsAuthenticated)
+        {
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <a asp-area="Identity" asp-page="/Account/Register"
+                   class="btn btn-light btn-lg fw-semibold px-4">Get Started</a>
+                <a asp-area="Identity" asp-page="/Account/Login"
+                   class="btn btn-outline-light btn-lg px-4">Log In</a>
+            </div>
+        }
+        else
+        {
+            <a asp-area="Identity" asp-page="/Account/Manage/Index"
+               class="btn btn-light btn-lg fw-semibold px-4">Go to Dashboard</a>
+        }
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="text-center mb-4">
+        <h2 class="fw-700" style="font-weight:700;">Everything you need to manage properties</h2>
+        <p class="text-muted">Built for property managers, tenants, and maintenance staff.</p>
+    </div>
+    <div class="row g-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#dbeafe;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2563eb" viewBox="0 0 16 16">
+                        <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+                        <path d="M13 7.293V13.5a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-3h-2v3a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5V7.293l7-7z"/>
+                    </svg>
+                </div>
+                <h5 class="fw-semibold mb-2">Property Management</h5>
+                <p class="text-muted mb-0" style="font-size:.9rem;">Add and manage properties and units. Track availability and occupancy at a glance.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#dcfce7;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#16a34a" viewBox="0 0 16 16">
+                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+                    </svg>
+                </div>
+                <h5 class="fw-semibold mb-2">Tenant Management</h5>
+                <p class="text-muted mb-0" style="font-size:.9rem;">Manage tenancies, lease agreements, and tenant communication in one place.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fef3c7;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#d97706" viewBox="0 0 16 16">
+                        <path d="M8.48 1.143a.5.5 0 0 0-.96 0l-.708 2.17a.5.5 0 0 1-.475.345H4.05a.5.5 0 0 0-.294.904l1.766 1.283a.5.5 0 0 1 .182.559l-.708 2.17a.5.5 0 0 0 .77.559L7.53 7.65a.5.5 0 0 1 .94 0l1.766 1.283a.5.5 0 0 0 .77-.559l-.708-2.17a.5.5 0 0 1 .182-.559l1.766-1.283a.5.5 0 0 0-.294-.904h-2.287a.5.5 0 0 1-.475-.345z"/>
+                        <path d="M1.5 14a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 1 0v11a.5.5 0 0 1-.5.5m13 0a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 1 0v11a.5.5 0 0 1-.5.5"/>
+                    </svg>
+                </div>
+                <h5 class="fw-semibold mb-2">Maintenance Requests</h5>
+                <p class="text-muted mb-0" style="font-size:.9rem;">Submit and track maintenance requests with real-time status updates for all parties.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fce7f3;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#db2777" viewBox="0 0 16 16">
+                        <path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.051zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73z"/>
+                    </svg>
+                </div>
+                <h5 class="fw-semibold mb-2">Payment Tracking</h5>
+                <p class="text-muted mb-0" style="font-size:.9rem;">Monitor rent payments, view payment history, and stay on top of dues effortlessly.</p>
+            </div>
+        </div>
+    </div>
 </div>
