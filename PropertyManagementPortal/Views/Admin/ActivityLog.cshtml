@@ -1,0 +1,60 @@
+@model List<PropertyManagementPortal.Models.ActivityLog>
+@{ ViewData["Title"] = "Activity Log"; }
+
+<div class="page-header">
+    <h3>Activity Log</h3>
+    <p>All admin actions recorded in the system</p>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td class="text-muted text-nowrap">
+                            @log.Timestamp.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                        </td>
+                        <td class="fw-semibold">@log.UserName</td>
+                        <td>
+                            <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-weight:500;font-size:.8rem;">@log.Action</span>
+                        </td>
+                        <td class="text-muted">@log.EntityType</td>
+                        <td class="text-muted">@(log.Details ?? "—")</td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-5">No activity recorded yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Page @ViewBag.Page of @ViewBag.TotalPages</span>
+            <div class="d-flex gap-2">
+                @if (ViewBag.Page > 1)
+                {
+                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page - 1)" class="btn btn-sm btn-outline-secondary">← Prev</a>
+                }
+                @if (ViewBag.Page < ViewBag.TotalPages)
+                {
+                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page + 1)" class="btn btn-sm btn-outline-secondary">Next →</a>
+                }
+            </div>
+        </div>
+    }
+</div>

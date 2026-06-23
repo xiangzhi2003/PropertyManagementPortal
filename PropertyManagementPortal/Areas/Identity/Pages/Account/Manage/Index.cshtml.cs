@@ -31,11 +31,10 @@ public class IndexModel : PageModel
     ///     directly from your code. This API may change or be removed in future releases.
     /// </summary>
     public string? Username { get; set; }
+    public string? UserRole { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
 
-    /// <summary>
-    ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
-    /// </summary>
     [TempData]
     public string? StatusMessage { get; set; }
 
@@ -70,8 +69,12 @@ public class IndexModel : PageModel
     {
         var userName = await _userManager.GetUserNameAsync(user);
         var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
 
         Username = userName;
+        UserRole = roles.FirstOrDefault() ?? "No Role";
+        CreatedAt = user.CreatedAt;
+        IsActive = user.IsActive;
 
         Input = new InputModel
         {

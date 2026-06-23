@@ -18,10 +18,15 @@ namespace PropertyManagementPortal.Data
         public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; }
         public DbSet<MaintenanceUpdate> MaintenanceUpdates { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<ApplicationUser>()
+                .Property(u => u.PhoneNumber)
+                .HasMaxLength(20);
 
             // Property → ApplicationUser (Manager): nullable FK
             builder.Entity<Property>()

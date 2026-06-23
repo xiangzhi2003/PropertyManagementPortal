@@ -1,0 +1,96 @@
+@model List<PropertyManagementPortal.Models.Property>
+@{ ViewData["Title"] = "Manage Properties"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3>Manage Properties</h3>
+        <p>Oversee all registered properties and their units</p>
+    </div>
+    <a asp-action="AddProperty" class="btn btn-primary px-4">+ Add Property</a>
+</div>
+
+<div class="card mb-4">
+    <div class="filter-card">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Name or address..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Type</label>
+                <select name="type" class="form-select">
+                    <option value="">All Types</option>
+                    @foreach (var t in new[] { "Apartment", "Condo", "House", "Commercial" })
+                    {
+                        <option value="@t" selected="@(ViewBag.TypeFilter == t)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
+                    <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a asp-action="Properties" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Property Name</th>
+                    <th>Address</th>
+                    <th>Type</th>
+                    <th>Manager</th>
+                    <th>Units</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold">@p.Name</td>
+                        <td class="text-muted">@p.Address</td>
+                        <td><span class="badge bg-light text-dark border">@p.Type</span></td>
+                        <td class="text-muted">@(p.Manager?.FullName ?? "—")</td>
+                        <td><span class="badge bg-light text-dark border">@p.Units.Count units</span></td>
+                        <td>
+                            @if (p.Status == "Active")
+                            { <span class="badge bg-success">Active</span> }
+                            else
+                            { <span class="badge bg-secondary">Inactive</span> }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a asp-action="ViewProperty" asp-route-id="@p.PropertyId" class="btn btn-sm btn-outline-secondary">View</a>
+                                <a asp-action="EditProperty" asp-route-id="@p.PropertyId" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form asp-action="TogglePropertyStatus" asp-route-id="@p.PropertyId" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm @(p.Status == "Active" ? "btn-outline-warning" : "btn-outline-success")"
+                                            onclick="return confirm('Toggle status for @p.Name?')">
+                                        @(p.Status == "Active" ? "Deactivate" : "Activate")
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-5">No properties found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

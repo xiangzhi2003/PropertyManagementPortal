@@ -1,32 +1,85 @@
 @page
 @model IndexModel
 @{
-    ViewData["Title"] = "Profile";
+    ViewData["Title"] = "My Profile";
     ViewData["ActivePage"] = ManageNavPages.Index;
 }
 
-<h3>@ViewData["Title"]</h3>
 <partial name="_StatusMessage" for="StatusMessage" />
-<div class="row">
-    <div class="col-md-6">
-        <form id="profile-form" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-            <div class="form-floating mb-3">
-                <input asp-for="Username" class="form-control" placeholder="Please choose your username." disabled />
-                <label asp-for="Username" class="form-label"></label>
+
+<div class="row g-4">
+    <!-- Editable info -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-1">Personal Information</h5>
+                <p class="text-muted mb-4" style="font-size:.9rem;">Update your display name and contact number.</p>
+
+                <form id="profile-form" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.FullName" class="form-control" placeholder="Full Name" />
+                        <label asp-for="Input.FullName">Full Name</label>
+                        <span asp-validation-for="Input.FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Phone number" />
+                        <label asp-for="Input.PhoneNumber">Phone Number</label>
+                        <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+                    </div>
+
+                    <button id="update-profile-button" type="submit" class="btn btn-primary btn-lg px-5">Save Changes</button>
+                </form>
             </div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.FullName" class="form-control" placeholder="Full Name" />
-                <label asp-for="Input.FullName" class="form-label"></label>
-                <span asp-validation-for="Input.FullName" class="text-danger"></span>
+        </div>
+    </div>
+
+    <!-- Read-only account info -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body p-4">
+                <!-- Avatar -->
+                <div class="d-flex align-items-center gap-3 mb-4 pb-3" style="border-bottom:1px solid #f3f4f6;">
+                    <div style="width:60px;height:60px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;color:#1d4ed8;flex-shrink:0;">
+                        @(Model.Input?.FullName?.FirstOrDefault() ?? '?')
+                    </div>
+                    <div>
+                        <div class="fw-bold" style="font-size:1.05rem;">@Model.Input?.FullName</div>
+                        @{
+                            var (roleBg, roleText) = Model.UserRole switch {
+                                "Admin" => ("#1e3a5f", "white"),
+                                "PropertyManager" => ("#dbeafe", "#1d4ed8"),
+                                "Tenant" => ("#dcfce7", "#15803d"),
+                                "MaintenanceStaff" => ("#fef3c7", "#92400e"),
+                                _ => ("#f3f4f6", "#374151")
+                            };
+                        }
+                        <span class="badge mt-1" style="background:@roleBg;color:@roleText;">
+                            @(Model.UserRole == "MaintenanceStaff" ? "Maintenance Staff" : Model.UserRole == "PropertyManager" ? "Property Manager" : Model.UserRole)
+                        </span>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-field-label">Email Address</div>
+                    <div class="detail-field-value">@Model.Username</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Account Status</div>
+                    <div class="detail-field-value">
+                        @if (Model.IsActive)
+                        { <span class="badge bg-success">Active</span> }
+                        else
+                        { <span class="badge bg-secondary">Inactive</span> }
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Member Since</div>
+                    <div class="detail-field-value">@Model.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy")</div>
+                </div>
             </div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number."/>
-                <label asp-for="Input.PhoneNumber" class="form-label"></label>
-                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
-            </div>
-            <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
-        </form>
+        </div>
     </div>
 </div>
 

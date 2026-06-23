@@ -1,0 +1,122 @@
+@model PropertyManagementPortal.ViewModels.Admin.ReportsViewModel
+@{ ViewData["Title"] = "System Reports"; }
+
+<div class="page-header">
+    <h3>System Reports</h3>
+    <p>Generated on @DateTime.Now.ToString("dd MMMM yyyy, HH:mm")</p>
+</div>
+
+<div class="row g-4">
+    <!-- Occupancy -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="section-heading">Occupancy Overview</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-3">
+                        <div class="text-center p-4" style="background:#f0f4f8;border-radius:10px;">
+                            <div class="fw-bold mb-1" style="font-size:2.25rem;line-height:1;color:#111827;">@Model.TotalUnits</div>
+                            <div class="text-muted" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Total Units</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="text-center p-4" style="background:#dcfce7;border-radius:10px;">
+                            <div class="fw-bold mb-1" style="font-size:2.25rem;line-height:1;color:#16a34a;">@Model.OccupiedUnits</div>
+                            <div class="text-muted" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Occupied</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="text-center p-4" style="background:#fef3c7;border-radius:10px;">
+                            <div class="fw-bold mb-1" style="font-size:2.25rem;line-height:1;color:#d97706;">@Model.VacantUnits</div>
+                            <div class="text-muted" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Vacant</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="text-center p-4" style="background:#dbeafe;border-radius:10px;">
+                            <div class="fw-bold mb-1" style="font-size:2.25rem;line-height:1;color:#2563eb;">@Model.OccupancyRate%</div>
+                            <div class="text-muted" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Occupancy Rate</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-1 d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">Occupancy progress</span>
+                    <span class="small fw-semibold">@Model.OccupancyRate%</span>
+                </div>
+                <div class="progress" style="height:16px;border-radius:8px;">
+                    <div class="progress-bar bg-success" style="width:@Model.OccupancyRate%;border-radius:8px;" role="progressbar" aria-valuenow="@Model.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading">Payment Summary</h6>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Total Payments</span>
+                    <span class="fw-bold fs-5">@Model.TotalPayments</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#16a34a;display:inline-block;"></span>
+                        <span class="text-muted">Paid</span>
+                    </div>
+                    <span class="fw-bold text-success fs-5">@Model.PaidPayments</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#d97706;display:inline-block;"></span>
+                        <span class="text-muted">Pending</span>
+                    </div>
+                    <span class="fw-bold fs-5" style="color:#d97706;">@Model.PendingPayments</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block;"></span>
+                        <span class="text-muted">Overdue</span>
+                    </div>
+                    <span class="fw-bold text-danger fs-5">@Model.OverduePayments</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading">Maintenance Summary</h6>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#d97706;display:inline-block;"></span>
+                        <span class="text-muted">Submitted</span>
+                    </div>
+                    <span class="fw-bold fs-5" style="color:#d97706;">@Model.SubmittedRequests</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#2563eb;display:inline-block;"></span>
+                        <span class="text-muted">Assigned</span>
+                    </div>
+                    <span class="fw-bold fs-5" style="color:#2563eb;">@Model.AssignedRequests</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#7c3aed;display:inline-block;"></span>
+                        <span class="text-muted">In Progress</span>
+                    </div>
+                    <span class="fw-bold fs-5" style="color:#7c3aed;">@Model.InProgressRequests</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#16a34a;display:inline-block;"></span>
+                        <span class="text-muted">Completed</span>
+                    </div>
+                    <span class="fw-bold text-success fs-5">@Model.CompletedRequests</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

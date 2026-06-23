@@ -1,0 +1,117 @@
+@model PropertyManagementPortal.ViewModels.Admin.UserListViewModel
+@{ ViewData["Title"] = "Manage Users"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3>Manage Users</h3>
+        <p>View, create and manage all portal users</p>
+    </div>
+    <a asp-action="CreateUser" class="btn btn-primary px-4">+ Add User</a>
+</div>
+
+<div class="card mb-4">
+    <div class="filter-card">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Name or email..." />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Role</label>
+                <select name="role" class="form-select">
+                    <option value="">All Roles</option>
+                    <option value="Admin" selected="@(Model.RoleFilter == "Admin")">Admin</option>
+                    <option value="PropertyManager" selected="@(Model.RoleFilter == "PropertyManager")">Property Manager</option>
+                    <option value="Tenant" selected="@(Model.RoleFilter == "Tenant")">Tenant</option>
+                    <option value="MaintenanceStaff" selected="@(Model.RoleFilter == "MaintenanceStaff")">Maintenance Staff</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="Active" selected="@(Model.StatusFilter == "Active")">Active</option>
+                    <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a asp-action="Users" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users)
+                {
+                    <tr>
+                        <td class="fw-semibold">@user.FullName</td>
+                        <td class="text-muted">@user.Email</td>
+                        <td class="text-muted">@(user.PhoneNumber ?? "—")</td>
+                        <td>
+                            @{
+                                var (roleBg, roleText) = user.Role switch {
+                                    "Admin" => ("#1e3a5f", "white"),
+                                    "PropertyManager" => ("#dbeafe", "#1d4ed8"),
+                                    "Tenant" => ("#dcfce7", "#15803d"),
+                                    "MaintenanceStaff" => ("#fef3c7", "#92400e"),
+                                    _ => ("#f3f4f6", "#374151")
+                                };
+                            }
+                            <span class="badge" style="background:@roleBg;color:@roleText;font-weight:500;">
+                                @(user.Role == "MaintenanceStaff" ? "Maintenance" : user.Role == "PropertyManager" ? "Prop. Manager" : user.Role)
+                            </span>
+                        </td>
+                        <td>
+                            @if (user.IsActive)
+                            { <span class="badge bg-success">Active</span> }
+                            else
+                            { <span class="badge bg-secondary">Inactive</span> }
+                        </td>
+                        <td class="text-muted">@user.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a asp-action="ViewUser" asp-route-id="@user.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                                <a asp-action="EditUser" asp-route-id="@user.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                @if (user.Role != "Admin")
+                                {
+                                    <form asp-action="ToggleUserStatus" asp-route-id="@user.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                                onclick="return confirm('@(user.IsActive ? "Deactivate" : "Activate") this user?')">
+                                            @(user.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                    <form asp-action="DeleteUser" asp-route-id="@user.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Permanently delete this user?')">Delete</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Users.Any())
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-5">No users found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

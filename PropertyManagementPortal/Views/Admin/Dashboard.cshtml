@@ -1,0 +1,127 @@
+@model PropertyManagementPortal.ViewModels.Admin.DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<div class="page-header d-flex justify-content-between align-items-start">
+    <div>
+        <h3>Dashboard</h3>
+        <p>Welcome back, <strong>@Model.AdminName</strong></p>
+    </div>
+    <span class="badge text-bg-light border fw-normal" style="font-size:.85rem;padding:.5rem .9rem;">
+        @DateTime.Now.ToString("dddd, dd MMMM yyyy")
+    </span>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Users" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #2563eb;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Total Users</p>
+                        <div class="stat-number" style="color:#2563eb;">@Model.TotalUsers</div>
+                        <p class="stat-sub">Managers, Tenants &amp; Staff</p>
+                    </div>
+                    <div class="stat-icon" style="background:#dbeafe;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#2563eb" viewBox="0 0 16 16">
+                            <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Properties" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #16a34a;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Properties</p>
+                        <div class="stat-number" style="color:#16a34a;">@Model.TotalProperties</div>
+                        <p class="stat-sub">Registered properties</p>
+                    </div>
+                    <div class="stat-icon" style="background:#dcfce7;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#16a34a" viewBox="0 0 16 16">
+                            <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+                            <path d="M13 7.293V13.5a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-3h-2v3a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5V7.293l7-7z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card" style="border-left:4px solid #d97706;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="stat-label">Pending Maintenance</p>
+                    <div class="stat-number" style="color:#d97706;">@Model.PendingMaintenance</div>
+                    <p class="stat-sub">Submitted / In-Progress</p>
+                </div>
+                <div class="stat-icon" style="background:#fef3c7;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#d97706" viewBox="0 0 16 16">
+                        <path d="M8.48 1.143a.5.5 0 0 0-.96 0l-.708 2.17a.5.5 0 0 1-.475.345H4.05a.5.5 0 0 0-.294.904l1.766 1.283a.5.5 0 0 1 .182.559l-.708 2.17a.5.5 0 0 0 .77.559L7.53 7.65a.5.5 0 0 1 .94 0l1.766 1.283a.5.5 0 0 0 .77-.559l-.708-2.17a.5.5 0 0 1 .182-.559l1.766-1.283a.5.5 0 0 0-.294-.904h-2.287a.5.5 0 0 1-.475-.345z"/>
+                        <path d="M1.5 14a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 1 0v11a.5.5 0 0 1-.5.5m13 0a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 1 0v11a.5.5 0 0 1-.5.5"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Reports" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #dc2626;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Overdue Payments</p>
+                        <div class="stat-number" style="color:#dc2626;">@Model.OverduePayments</div>
+                        <p class="stat-sub">Requires attention</p>
+                    </div>
+                    <div class="stat-icon" style="background:#fee2e2;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#dc2626" viewBox="0 0 16 16">
+                            <path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.051zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Recent Activity (full width) -->
+<div class="card">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="section-heading mb-0">Recent Activity</h6>
+            <a asp-action="ActivityLog" class="btn btn-sm btn-outline-primary">View All Activity</a>
+        </div>
+        @{
+            var recentLogs = ViewBag.RecentLogs as List<PropertyManagementPortal.Models.ActivityLog>;
+        }
+        @if (recentLogs != null && recentLogs.Any())
+        {
+            @foreach (var log in recentLogs)
+            {
+                <div class="activity-item">
+                    <div class="d-flex gap-3 align-items-start">
+                        <div class="activity-dot mt-2"></div>
+                        <div>
+                            <span class="fw-semibold" style="font-size:.92rem;">@log.Action</span>
+                            @if (!string.IsNullOrEmpty(log.Details))
+                            {
+                                <span class="text-muted ms-1" style="font-size:.88rem;">— @log.Details</span>
+                            }
+                            <div class="text-muted mt-1" style="font-size:.8rem;">by @log.UserName</div>
+                        </div>
+                    </div>
+                    <span class="text-muted text-nowrap" style="font-size:.82rem;">
+                        @log.Timestamp.ToLocalTime().ToString("dd MMM, HH:mm")
+                    </span>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-muted mb-0 py-3 text-center">No recent activity recorded yet.</p>
+        }
+    </div>
+</div>

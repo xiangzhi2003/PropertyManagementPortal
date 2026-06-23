@@ -9,9 +9,6 @@ namespace PropertyManagementPortal.Models
         [MaxLength(100)]
         public string FullName { get; set; } = string.Empty;
 
-        [MaxLength(20)]
-        public new string? PhoneNumber { get; set; }
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public bool IsActive { get; set; } = true;

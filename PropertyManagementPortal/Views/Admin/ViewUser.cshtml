@@ -1,0 +1,87 @@
+@model PropertyManagementPortal.Models.ApplicationUser
+@{ ViewData["Title"] = "User Details"; }
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Users" class="btn btn-outline-secondary">← Back to Users</a>
+    <h3 class="mb-0" style="font-size:1.4rem;font-weight:700;">User Details</h3>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body p-4">
+                <!-- Avatar + Name header -->
+                <div class="d-flex align-items-center gap-4 mb-4 pb-4" style="border-bottom:1px solid #f3f4f6;">
+                    <div style="width:72px;height:72px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:#1d4ed8;flex-shrink:0;">
+                        @Model.FullName.FirstOrDefault()
+                    </div>
+                    <div>
+                        <h4 class="fw-bold mb-1">@Model.FullName</h4>
+                        <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-weight:500;">@ViewBag.Role</span>
+                        @if (Model.IsActive)
+                        { <span class="badge bg-success ms-1">Active</span> }
+                        else
+                        { <span class="badge bg-secondary ms-1">Inactive</span> }
+                    </div>
+                </div>
+
+                <!-- Detail fields -->
+                <div class="detail-row">
+                    <div class="detail-field-label">Email Address</div>
+                    <div class="detail-field-value">@Model.Email</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Phone Number</div>
+                    <div class="detail-field-value">@(Model.PhoneNumber ?? "—")</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Role</div>
+                    <div class="detail-field-value">@ViewBag.Role</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Account Status</div>
+                    <div class="detail-field-value">
+                        @if (Model.IsActive)
+                        { <span class="badge bg-success">Active</span> }
+                        else
+                        { <span class="badge bg-secondary">Inactive</span> }
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Member Since</div>
+                    <div class="detail-field-value">@Model.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h6 class="section-heading">Account Summary</h6>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Tenancies</span>
+                    <span class="fw-bold fs-5">@ViewBag.TenancyCount</span>
+                </div>
+                <div class="detail-row d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Maintenance Requests</span>
+                    <span class="fw-bold fs-5">@ViewBag.MaintenanceCount</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2">
+            <a asp-action="EditUser" asp-route-id="@Model.Id" class="btn btn-primary btn-lg">Edit User</a>
+            @if (ViewBag.Role != "Admin")
+            {
+                <form asp-action="ToggleUserStatus" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-lg w-100 @(Model.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                            onclick="return confirm('@(Model.IsActive ? "Deactivate" : "Activate") this user?')">
+                        @(Model.IsActive ? "Deactivate Account" : "Activate Account")
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
