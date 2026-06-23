@@ -10,17 +10,77 @@ A centralized web platform for managing properties, tenants, maintenance request
 
 ## Features
 
-### Admin
-- Dashboard with live stats (users, properties, pending maintenance, overdue payments)
-- Manage Users — create, edit, view, activate/deactivate, delete users across all roles
-- Manage Properties — add, edit, view, toggle status, assign property managers
-- Reports — occupancy rates, payment breakdown, maintenance request status
-- Activity Log — paginated audit trail of all admin actions
-
 ### All Users
 - Login with email/password or Google OAuth
 - My Profile — edit full name and phone number; view role, account status, member since
 - Change Password
+
+---
+
+### Admin ✅
+
+**Dashboard**
+- Stat cards: Total Users, Total Properties, Pending Maintenance, Overdue Payments — each links to the relevant page
+- Welcome message with admin name and recent activity feed
+
+**Manage Users**
+- Table view: name, email, phone, role badge, status badge
+- Search and filter by name, email, role, or status
+- Create new user (PropertyManager, Tenant, MaintenanceStaff)
+- Edit user details and role assignment (email is read-only)
+- View full user detail page
+- Toggle activate / deactivate (Admin accounts protected)
+- Delete user (blocked if user has active tenancies or maintenance requests)
+
+**Manage Properties**
+- Table view: name, address, type, assigned manager, unit count, status
+- Search and filter by name, type, or status
+- Add new property and assign to a Property Manager
+- Edit property details
+- View property detail page with units list
+- Toggle Active / Inactive status
+
+**System Reports**
+- Occupancy Report — total units, occupied vs vacant, occupancy rate %
+- Payment Summary — total, paid, pending, overdue counts
+- Maintenance Summary — submitted, assigned, in-progress, completed counts
+
+**Activity Log**
+- Paginated audit trail of all system actions — who, what, when
+
+---
+
+### Maintenance Staff 🔧 *(in progress)*
+
+**Dashboard**
+- Assigned jobs count by status
+- Latest assigned job highlight
+- Completed jobs this month count
+
+**Assigned Jobs**
+- View all jobs assigned to them with unit, property, issue description, tenant, date, and status
+- Filter by status (Assigned / InProgress / Completed)
+- Click through to full job details
+
+**Update Job Status**
+- Assigned → InProgress when starting work
+- InProgress → Completed when done
+- Each status change requires a note/comment
+- Tenant and Property Manager notified on each change
+
+**Upload Repair Evidence**
+- Upload photo of completed repair
+- Add completion notes (work done, parts used)
+- Required when marking a job as Completed
+
+**Notifications**
+- New job assignment alerts
+- Follow-up comments from Property Manager
+
+---
+
+### Property Manager 🏢 *(planned)*
+### Tenant 🏠 *(planned)*
 
 ---
 

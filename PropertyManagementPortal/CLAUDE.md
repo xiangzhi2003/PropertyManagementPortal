@@ -88,9 +88,85 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 | `feature/tenant` | Tenant panel (not started) |
 | `feature/maintenance` | Maintenance Staff panel (not started) |
 
+## Feature Specifications
+
+### Admin (BUILT — `Controllers/AdminController.cs`)
+
+**Dashboard**
+- Stat cards: Total Users, Total Properties, Pending Maintenance, Overdue Payments
+- Each card links to the relevant page
+- Welcome message with admin's full name
+- Recent activity feed
+
+**Manage Users**
+- Table: name, email, phone, role badge, status badge
+- Search/filter by name, email, role, status
+- Create user (PropertyManager, Tenant, MaintenanceStaff only — not Admin)
+- Edit user details and role (email is read-only)
+- View user detail page
+- Toggle activate/deactivate (cannot deactivate Admin or self)
+- Delete user (blocked if Admin, or has active tenancies/maintenance requests)
+
+**Manage Properties**
+- Table: name, address, type, assigned manager, unit count, status
+- Search/filter by name, type, status
+- Add property (assign to a Property Manager)
+- Edit property details
+- View property detail page (includes units list)
+- Toggle Active/Inactive status
+
+**System Reports**
+- Occupancy Report: total units, occupied vs vacant, occupancy rate %
+- Payment Summary: total, paid, pending, overdue counts
+- Maintenance Summary: submitted, assigned, in-progress, completed counts
+
+**Activity Log**
+- Paginated list: who did what, when
+- All admin mutations logged via `LogAsync()`
+
+---
+
+### Maintenance Staff (PLANNED — `feature/maintenance` branch)
+
+**Dashboard**
+- Assigned jobs count by status
+- Latest assigned job highlight
+- Completed jobs this month count
+
+**Assigned Jobs**
+- View all jobs assigned to them
+- Each job shows: unit, property, issue description, tenant name, date, status
+- Filter by status (Assigned / InProgress / Completed)
+- Click to view full job details
+
+**Update Job Status**
+- Assigned → InProgress (when starting work)
+- InProgress → Completed (when done)
+- Each status change requires a note/comment
+- Tenant and Property Manager notified on each change
+
+**Upload Repair Evidence**
+- Upload photo of completed repair
+- Add completion notes (work done, parts used)
+- Required when marking job as Completed
+
+**Notifications**
+- New job assignment alerts
+- Follow-up comments from Property Manager
+
+---
+
+### Property Manager (PLANNED — `feature/manager` branch)
+*(spec not yet defined)*
+
+### Tenant (PLANNED — `feature/tenant` branch)
+*(spec not yet defined)*
+
+---
+
 ## What Is Not Built Yet
 
-Models and DB tables exist for all entities, but these role panels have no controllers or views yet:
-- **PropertyManager** — property/tenant/unit management
-- **Tenant** — tenancy view, maintenance request submission, payment history
-- **MaintenanceStaff** — assigned request queue, status updates
+Models and DB tables exist for all entities, but these role panels have no controllers or views:
+- **MaintenanceStaff** — see spec above
+- **PropertyManager** — spec pending
+- **Tenant** — spec pending
