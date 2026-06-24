@@ -11,9 +11,11 @@ A centralized web platform for managing properties, tenants, maintenance request
 ## Features
 
 ### All Users
+- Register with email/password or Google OAuth — automatically assigned **Tenant** role
 - Login with email/password or Google OAuth
 - My Profile — edit full name and phone number; view role, account status, member since
 - Change Password
+- Role-based dashboard routing after login
 
 ---
 
@@ -26,7 +28,7 @@ A centralized web platform for managing properties, tenants, maintenance request
 **Manage Users**
 - Table view: name, email, phone, role badge, status badge
 - Search and filter by name, email, role, or status
-- Create new user (PropertyManager, Tenant, MaintenanceStaff)
+- Create new user (any role)
 - Edit user details and role assignment (email is read-only)
 - View full user detail page
 - Toggle activate / deactivate (Admin accounts protected)
@@ -48,39 +50,27 @@ A centralized web platform for managing properties, tenants, maintenance request
 **Activity Log**
 - Paginated audit trail of all system actions — who, what, when
 
----
-
-### Maintenance Staff 🔧 *(in progress)*
-
-**Dashboard**
-- Assigned jobs count by status
-- Latest assigned job highlight
-- Completed jobs this month count
-
-**Assigned Jobs**
-- View all jobs assigned to them with unit, property, issue description, tenant, date, and status
-- Filter by status (Assigned / InProgress / Completed)
-- Click through to full job details
-
-**Update Job Status**
-- Assigned → InProgress when starting work
-- InProgress → Completed when done
-- Each status change requires a note/comment
-- Tenant and Property Manager notified on each change
-
-**Upload Repair Evidence**
-- Upload photo of completed repair
-- Add completion notes (work done, parts used)
-- Required when marking a job as Completed
-
-**Notifications**
-- New job assignment alerts
-- Follow-up comments from Property Manager
+**Role Requests**
+- Tenants can request to become a Property Manager or Maintenance Staff
+- Pending request count shown as a badge in the admin sidebar
+- Approve — instantly changes the user's role
+- Reject — marks request as rejected with an optional reason note
 
 ---
 
-### Property Manager 🏢 *(planned)*
-### Tenant 🏠 *(planned)*
+### Tenant 🏠 *(partial)*
+
+**Role Upgrade Request**
+- Dashboard shows two cards: request Property Manager or Maintenance Staff role
+- Pending requests show a status banner — upgrade cards hidden until resolved
+- Rejected requests show the admin's reason — user can re-submit
+
+*Full tenant features (tenancy view, maintenance requests, payment history) — coming soon*
+
+---
+
+### Property Manager 🏢 *(stub — coming soon)*
+### Maintenance Staff 🔧 *(stub — coming soon)*
 
 ---
 
@@ -139,7 +129,7 @@ A centralized web platform for managing properties, tenants, maintenance request
    ```bash
    dotnet run
    ```
-   The app seeds an Admin user and all roles on first startup.
+   The app seeds all roles on first startup. Create an Admin user via the Register page then assign the Admin role via the database or a seed script.
 
 ---
 
@@ -149,9 +139,12 @@ A centralized web platform for managing properties, tenants, maintenance request
 PropertyManagementPortal/
 ├── Controllers/
 │   ├── HomeController.cs
-│   └── AdminController.cs
+│   ├── AdminController.cs        # Admin panel — full
+│   ├── TenantController.cs       # Tenant dashboard + role requests
+│   ├── ManagerController.cs      # Property Manager stub
+│   └── MaintenanceController.cs  # Maintenance Staff stub
 ├── Models/
-│   ├── ApplicationUser.cs      # Extends IdentityUser
+│   ├── ApplicationUser.cs        # Extends IdentityUser
 │   ├── Property.cs
 │   ├── Unit.cs
 │   ├── Tenancy.cs
@@ -159,18 +152,22 @@ PropertyManagementPortal/
 │   ├── MaintenanceRequest.cs
 │   ├── MaintenanceUpdate.cs
 │   ├── Notification.cs
-│   └── ActivityLog.cs
-├── ViewModels/Admin/           # View models for admin views
+│   ├── ActivityLog.cs
+│   └── RoleRequest.cs            # Tenant role upgrade requests
+├── ViewModels/Admin/
 ├── Views/
-│   ├── Admin/                  # Admin panel views + _AdminLayout.cshtml
+│   ├── Admin/                    # Admin panel views + _AdminLayout.cshtml
+│   ├── Tenant/                   # Tenant dashboard
+│   ├── Manager/                  # Property Manager stub view
+│   ├── Maintenance/              # Maintenance Staff stub view
 │   ├── Home/
 │   └── Shared/
-├── Areas/Identity/             # Scaffolded Identity pages (Login, Register, Manage)
+├── Areas/Identity/               # Scaffolded Identity pages (Login, Register, Manage)
 ├── Data/
 │   ├── ApplicationDbContext.cs
 │   └── SeedData.cs
 ├── Migrations/
-└── wwwroot/css/site.css        # Custom CSS with Bootstrap 5 overrides
+└── wwwroot/css/site.css
 ```
 
 ---
@@ -179,9 +176,9 @@ PropertyManagementPortal/
 
 | Role | Description |
 |---|---|
-| Admin | Full system access — user management, property oversight, reports |
+| Admin | Full system access — user management, property oversight, reports, role approvals |
 | PropertyManager | Manages assigned properties, units, and tenants |
-| Tenant | Views tenancy details, submits maintenance requests, tracks payments |
+| Tenant | Default role on registration; can request role upgrade |
 | MaintenanceStaff | Receives and updates assigned maintenance requests |
 
 ---

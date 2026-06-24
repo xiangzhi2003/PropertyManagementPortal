@@ -43,15 +43,15 @@ This file is gitignored. It holds real secrets and must never be committed.
 - Provider: Npgsql (PostgreSQL) via NeonDB (serverless Postgres, hosted on AWS ap-southeast-1)
 - EF Core migrations in `Migrations/`
 - Run `dotnet ef database update` to apply pending migrations
-- `Data/SeedData.cs` seeds the Admin user and all four roles on startup
+- `Data/SeedData.cs` seeds all four roles on startup (Admin user created manually)
 
 ## Roles
 
 | Role | Notes |
 |---|---|
-| Admin | Full access — seeded on first run |
+| Admin | Full access — created manually or via seed |
 | PropertyManager | Manages assigned properties and tenants |
-| Tenant | Views tenancy, submits maintenance requests |
+| Tenant | Default role assigned on registration |
 | MaintenanceStaff | Handles assigned maintenance requests |
 
 ## Key Conventions
@@ -59,10 +59,28 @@ This file is gitignored. It holds real secrets and must never be committed.
 ### ApplicationUser
 `Models/ApplicationUser.cs` extends `IdentityUser`. **Never add a property with the `new` keyword that shadows a base-class property.** This caused a phone-number bug where EF Core saved to the derived property but `UserManager.GetPhoneNumberAsync` always returned null (reads base class via generic constraint). Fix: removed the hiding property; preserved `MaxLength(20)` via fluent API in `OnModelCreating`.
 
+### Registration — Auto Tenant Role
+Both `Areas/Identity/Pages/Account/Register.cshtml.cs` and `ExternalLogin.cshtml.cs` call `AddToRoleAsync(user, "Tenant")` immediately after user creation. Every self-registered user (email or Google OAuth) gets the Tenant role automatically.
+
+### Home Page Routing
+`Views/Home/Index.cshtml` uses `User.IsInRole()` to route each authenticated user to their role's dashboard:
+- Admin → `/Admin/Dashboard`
+- PropertyManager → `/Manager/Dashboard`
+- MaintenanceStaff → `/Maintenance/Dashboard`
+- Tenant (or no role) → `/Tenant/Dashboard`
+
 ### Admin Panel
 - Controller: `Controllers/AdminController.cs` — protected with `[Authorize(Roles = "Admin")]`
 - Views: `Views/Admin/` using `Views/Admin/_AdminLayout.cshtml`
 - Every mutating action calls `LogAsync(action, entityType, entityId, details)` to write to `ActivityLogs`
+
+### Role Panel Controllers
+| Controller | Role | Status |
+|---|---|---|
+| `Controllers/AdminController.cs` | Admin | Full |
+| `Controllers/TenantController.cs` | Tenant | Partial (role request only) |
+| `Controllers/ManagerController.cs` | PropertyManager | Stub |
+| `Controllers/MaintenanceController.cs` | MaintenanceStaff | Stub |
 
 ### Identity Manage Pages
 - `Areas/Identity/Pages/Account/Manage/`
@@ -101,7 +119,7 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 **Manage Users**
 - Table: name, email, phone, role badge, status badge
 - Search/filter by name, email, role, status
-- Create user (PropertyManager, Tenant, MaintenanceStaff only — not Admin)
+- Create user (any role)
 - Edit user details and role (email is read-only)
 - View user detail page
 - Toggle activate/deactivate (cannot deactivate Admin or self)
@@ -124,49 +142,50 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 - Paginated list: who did what, when
 - All admin mutations logged via `LogAsync()`
 
+**Role Requests**
+- Tenants can request to become PropertyManager or MaintenanceStaff
+- Admin sees pending requests with a badge count in the sidebar
+- Approve: changes user's role immediately
+- Reject: marks request rejected, optionally adds a reason note
+- Model: `Models/RoleRequest.cs` — fields: UserId, RequestedRole, Status, RequestedAt, ReviewedAt, ReviewedBy, AdminNotes
+
 ---
 
-### Maintenance Staff (PLANNED — `feature/maintenance` branch)
+### Tenant (PARTIAL — `Controllers/TenantController.cs`)
 
 **Dashboard**
-- Assigned jobs count by status
-- Latest assigned job highlight
-- Completed jobs this month count
+- Welcome card with name and Tenant role badge
+- Role Upgrade section: two cards to request PropertyManager or MaintenanceStaff role
+- If request pending: shows pending banner, hides upgrade cards
+- If request rejected: shows rejection reason, upgrade cards reappear
 
-**Assigned Jobs**
-- View all jobs assigned to them
-- Each job shows: unit, property, issue description, tenant name, date, status
-- Filter by status (Assigned / InProgress / Completed)
-- Click to view full job details
-
-**Update Job Status**
-- Assigned → InProgress (when starting work)
-- InProgress → Completed (when done)
-- Each status change requires a note/comment
-- Tenant and Property Manager notified on each change
-
-**Upload Repair Evidence**
-- Upload photo of completed repair
-- Add completion notes (work done, parts used)
-- Required when marking job as Completed
-
-**Notifications**
-- New job assignment alerts
-- Follow-up comments from Property Manager
+**Not yet built**
+- Tenancy view (lease details, unit info)
+- Maintenance request submission and tracking
+- Payment history
 
 ---
 
-### Property Manager (PLANNED — `feature/manager` branch)
-*(spec not yet defined)*
+### Property Manager (STUB — `Controllers/ManagerController.cs`)
+- Stub dashboard: "coming soon" page
+- Full panel: NOT YET BUILT
 
-### Tenant (PLANNED — `feature/tenant` branch)
-*(spec not yet defined)*
+### Maintenance Staff (STUB — `Controllers/MaintenanceController.cs`)
+
+**Planned features**
+- Dashboard: assigned jobs count by status, latest job, completed this month
+- Assigned Jobs: list with unit, property, issue, tenant, date, status; filter by status
+- Update Job Status: Assigned → InProgress → Completed, each requires a note
+- Upload Repair Evidence: photo + completion notes, required when marking Completed
+- Notifications: new assignment alerts, PM follow-ups
+
+**Status: NOT YET BUILT** (stub dashboard only)
 
 ---
 
 ## What Is Not Built Yet
 
-Models and DB tables exist for all entities, but these role panels have no controllers or views:
-- **MaintenanceStaff** — see spec above
-- **PropertyManager** — spec pending
-- **Tenant** — spec pending
+Models and DB tables exist for all entities. Missing controllers/views:
+- **PropertyManager** — full panel (spec not yet defined)
+- **MaintenanceStaff** — full panel (spec defined above)
+- **Tenant** — tenancy view, maintenance requests, payments
