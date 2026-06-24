@@ -61,6 +61,10 @@
         <div class="card table-card">
             <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h6 class="section-heading mb-0">Units (@Model.Units.Count)</h6>
+                <button type="button" class="btn btn-primary btn-sm px-3"
+                        data-bs-toggle="modal" data-bs-target="#addUnitModal">
+                    + Add Unit
+                </button>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover">
@@ -71,6 +75,7 @@
                             <th>Floor</th>
                             <th>Rent (RM)</th>
                             <th>Status</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -87,15 +92,77 @@
                                     else
                                     { <span class="badge bg-warning text-dark">Vacant</span> }
                                 </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="EditUnit" asp-route-id="@unit.UnitId"
+                                           class="btn btn-outline-primary btn-sm">Edit</a>
+                                        <form asp-action="DeleteUnit" asp-route-id="@unit.UnitId" method="post"
+                                              onsubmit="return confirm('Delete unit @unit.UnitNumber? This cannot be undone.')">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         }
                         @if (!Model.Units.Any())
                         {
-                            <tr><td colspan="5" class="text-center text-muted py-5">No units added yet.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-5">No units added yet.</td></tr>
                         }
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Unit Modal -->
+<div class="modal fade" id="addUnitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="AddUnit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="propertyId" value="@Model.PropertyId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label detail-field-label">Unit Number <span class="text-danger">*</span></label>
+                        <input type="text" name="unitNumber" class="form-control" maxlength="20" placeholder="e.g. A-01" required />
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label detail-field-label">Type <span class="text-danger">*</span></label>
+                            <select name="type" class="form-select" required>
+                                <option value="">Select type</option>
+                                <option value="Studio">Studio</option>
+                                <option value="1BR">1 Bedroom</option>
+                                <option value="2BR">2 Bedrooms</option>
+                                <option value="3BR">3 Bedrooms</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label detail-field-label">Floor <span class="text-danger">*</span></label>
+                            <input type="number" name="floor" class="form-control" min="0" max="200" value="1" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label detail-field-label">Monthly Rent (RM) <span class="text-danger">*</span></label>
+                        <input type="number" name="rentAmount" class="form-control" min="0" step="0.01" placeholder="0.00" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label detail-field-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2" maxlength="500"
+                                  placeholder="Optional notes about this unit"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">Add Unit</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

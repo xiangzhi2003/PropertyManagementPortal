@@ -183,6 +183,7 @@ public class ExternalLoginModel : PageModel
                 // Auto-confirm email — Google has already verified the address
                 var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 await _userManager.ConfirmEmailAsync(user, emailToken);
+                await _userManager.AddToRoleAsync(user, "Tenant");
 
                 result = await _userManager.AddLoginAsync(user, info);
                 if (result.Succeeded)

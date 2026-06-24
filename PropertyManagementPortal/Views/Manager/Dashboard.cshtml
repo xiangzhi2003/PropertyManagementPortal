@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var user = ViewBag.User as PropertyManagementPortal.Models.ApplicationUser;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <div style="width:52px;height:52px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#1d4ed8;flex-shrink:0;">
+        @(user?.FullName?.FirstOrDefault() ?? '?')
+    </div>
+    <div>
+        <h4 class="fw-bold mb-0">Welcome, @user?.FullName</h4>
+        <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Property Manager</span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-4 text-center py-5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16" class="mb-3">
+            <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+            <path d="M13 7.293V13.5a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-3h-2v3a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5V7.293l7-7z"/>
+        </svg>
+        <h5 class="fw-semibold text-muted mb-2">Property Manager Dashboard</h5>
+        <p class="text-muted mb-3" style="font-size:.9rem;">Your dashboard is being built. Check back soon — you'll be able to manage your properties, units, tenants, and maintenance requests here.</p>
+        <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-primary btn-sm px-4">Go to My Profile</a>
+    </div>
+</div>

@@ -135,40 +135,105 @@ A centralized web platform for managing properties, tenants, maintenance request
 
 ## Project Structure
 
-```
-PropertyManagementPortal/
-├── Controllers/
-│   ├── HomeController.cs
-│   ├── AdminController.cs        # Admin panel — full
-│   ├── TenantController.cs       # Tenant dashboard + role requests
-│   ├── ManagerController.cs      # Property Manager stub
-│   └── MaintenanceController.cs  # Maintenance Staff stub
-├── Models/
-│   ├── ApplicationUser.cs        # Extends IdentityUser
-│   ├── Property.cs
-│   ├── Unit.cs
-│   ├── Tenancy.cs
-│   ├── Payment.cs
-│   ├── MaintenanceRequest.cs
-│   ├── MaintenanceUpdate.cs
-│   ├── Notification.cs
-│   ├── ActivityLog.cs
-│   └── RoleRequest.cs            # Tenant role upgrade requests
-├── ViewModels/Admin/
-├── Views/
-│   ├── Admin/                    # Admin panel views + _AdminLayout.cshtml
-│   ├── Tenant/                   # Tenant dashboard
-│   ├── Manager/                  # Property Manager stub view
-│   ├── Maintenance/              # Maintenance Staff stub view
-│   ├── Home/
-│   └── Shared/
-├── Areas/Identity/               # Scaffolded Identity pages (Login, Register, Manage)
-├── Data/
-│   ├── ApplicationDbContext.cs
-│   └── SeedData.cs
-├── Migrations/
-└── wwwroot/css/site.css
-```
+### Shared Infrastructure (all roles)
+
+| File | Purpose |
+|---|---|
+| `Program.cs` | App startup, DI, auth config, role seeding |
+| `appsettings.json` | DB + Google OAuth secrets (**gitignored**) |
+| `appsettings.example.json` | Safe template to share with teammates |
+| `Data/ApplicationDbContext.cs` | EF Core DbContext, all DbSets, model config |
+| `Data/SeedData.cs` | Seeds all four roles on startup |
+| `Views/Shared/_Layout.cshtml` | Public layout (login/register/home pages) |
+| `Views/Home/Index.cshtml` | Landing page + role-based redirect after login |
+| `wwwroot/css/site.css` | All custom CSS (shared + admin-specific classes) |
+
+**Identity pages** (`Areas/Identity/Pages/Account/`) — used by all roles:
+
+| File | Purpose |
+|---|---|
+| `Login.cshtml / .cs` | Email + Google OAuth login |
+| `Register.cshtml / .cs` | Registration — auto-assigns Tenant role |
+| `ExternalLogin.cshtml / .cs` | Google OAuth callback — auto-assigns Tenant role |
+| `Manage/Index.cshtml / .cs` | My Profile (edit name, phone; view role/status) |
+| `Manage/ChangePassword.cshtml / .cs` | Change password |
+| `Manage/_ManageNav.cshtml` | Trimmed nav (only My Profile + Change Password visible) |
+
+**Models** (`Models/`) — DB tables shared by all roles:
+
+| File | Description |
+|---|---|
+| `ApplicationUser.cs` | Extends IdentityUser — adds FullName, IsActive, CreatedAt |
+| `Property.cs` | Property record |
+| `Unit.cs` | Unit within a property |
+| `Tenancy.cs` | Links a Tenant user to a Unit (lease) |
+| `Payment.cs` | Rent payment record |
+| `MaintenanceRequest.cs` | Maintenance job |
+| `MaintenanceUpdate.cs` | Status update / note on a maintenance job |
+| `Notification.cs` | In-app notifications |
+| `ActivityLog.cs` | Admin audit trail |
+| `RoleRequest.cs` | Tenant → Manager/Staff role upgrade request |
+
+---
+
+### Admin
+
+> Controller: `Controllers/AdminController.cs` — `[Authorize(Roles = "Admin")]`
+> Layout: `Views/Admin/_AdminLayout.cshtml`
+
+| View | Purpose |
+|---|---|
+| `Views/Admin/Dashboard.cshtml` | Stat cards + recent activity feed |
+| `Views/Admin/Users.cshtml` | User list with search/filter |
+| `Views/Admin/CreateUser.cshtml` | Create new user form |
+| `Views/Admin/EditUser.cshtml` | Edit user details + role |
+| `Views/Admin/ViewUser.cshtml` | Read-only user detail page |
+| `Views/Admin/Properties.cshtml` | Property list with search/filter |
+| `Views/Admin/AddProperty.cshtml` | Add property form |
+| `Views/Admin/EditProperty.cshtml` | Edit property form |
+| `Views/Admin/ViewProperty.cshtml` | Property detail + units table (add/edit/delete) |
+| `Views/Admin/EditUnit.cshtml` | Edit unit form |
+| `Views/Admin/Reports.cshtml` | Occupancy, payment, maintenance summaries |
+| `Views/Admin/ActivityLog.cshtml` | Paginated audit log |
+| `Views/Admin/RoleRequests.cshtml` | Approve/reject tenant role upgrade requests |
+
+ViewModels in `ViewModels/Admin/`: `DashboardViewModel`, `UserListViewModel`, `CreateUserViewModel`, `EditUserViewModel`, `PropertyFormViewModel`, `ReportsViewModel`
+
+---
+
+### Tenant *(partial)*
+
+> Controller: `Controllers/TenantController.cs` — `[Authorize(Roles = "Tenant")]`
+
+| File | Purpose |
+|---|---|
+| `Views/Tenant/Dashboard.cshtml` | Role upgrade request UI (request Manager or Staff role) |
+
+*Tenancy details, maintenance requests, payment history — not yet built*
+
+---
+
+### Property Manager *(stub)*
+
+> Controller: `Controllers/ManagerController.cs` — `[Authorize(Roles = "PropertyManager")]`
+
+| File | Purpose |
+|---|---|
+| `Views/Manager/Dashboard.cshtml` | "Coming soon" placeholder |
+
+---
+
+### Maintenance Staff *(stub)*
+
+> Controller: `Controllers/MaintenanceController.cs` — `[Authorize(Roles = "MaintenanceStaff")]`
+
+| File | Purpose |
+|---|---|
+| `Views/Maintenance/Dashboard.cshtml` | "Coming soon" placeholder |
+
+---
+
+> **Rule of thumb:** each role owns its `Controllers/XController.cs` + `Views/X/` folder. `Models/`, `Data/`, and `Areas/Identity/` are shared — teammates generally don't need to modify those.
 
 ---
 

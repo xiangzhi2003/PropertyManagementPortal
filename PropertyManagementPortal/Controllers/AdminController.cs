@@ -422,6 +422,132 @@ namespace PropertyManagementPortal.Controllers
             return View(logs);
         }
 
+        // ── Units ────────────────────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddUnit(int propertyId, string unitNumber, string type, decimal rentAmount, int floor, string? description)
+        {
+            var property = await _db.Properties.FindAsync(propertyId);
+            if (property == null) return NotFound();
+
+            _db.Units.Add(new Unit
+            {
+                PropertyId = propertyId,
+                UnitNumber = unitNumber,
+                Type = type,
+                RentAmount = rentAmount,
+                Floor = floor,
+                Description = description,
+                Status = "Vacant"
+            });
+            await _db.SaveChangesAsync();
+            await LogAsync("Added Unit", "Unit", propertyId.ToString(), $"{unitNumber} — {property.Name}");
+            TempData["Success"] = $"Unit {unitNumber} added successfully.";
+            return RedirectToAction(nameof(ViewProperty), new { id = propertyId });
+        }
+
+        public async Task<IActionResult> EditUnit(int id)
+        {
+            var unit = await _db.Units.Include(u => u.Property).FirstOrDefaultAsync(u => u.UnitId == id);
+            if (unit == null) return NotFound();
+            return View(unit);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditUnit(int id, string unitNumber, string type, decimal rentAmount, int floor, string? description)
+        {
+            var unit = await _db.Units.Include(u => u.Property).FirstOrDefaultAsync(u => u.UnitId == id);
+            if (unit == null) return NotFound();
+
+            unit.UnitNumber = unitNumber;
+            unit.Type = type;
+            unit.RentAmount = rentAmount;
+            unit.Floor = floor;
+            unit.Description = description;
+            await _db.SaveChangesAsync();
+            await LogAsync("Edited Unit", "Unit", id.ToString(), $"{unitNumber} — {unit.Property.Name}");
+            TempData["Success"] = $"Unit {unitNumber} updated successfully.";
+            return RedirectToAction(nameof(ViewProperty), new { id = unit.PropertyId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteUnit(int id)
+        {
+            var unit = await _db.Units.Include(u => u.Property).FirstOrDefaultAsync(u => u.UnitId == id);
+            if (unit == null) return NotFound();
+
+            var hasActive = await _db.Tenancies.AnyAsync(t => t.UnitId == id);
+            if (hasActive)
+            {
+                TempData["Error"] = "Cannot delete a unit with active tenancies.";
+                return RedirectToAction(nameof(ViewProperty), new { id = unit.PropertyId });
+            }
+
+            var propertyId = unit.PropertyId;
+            var number = unit.UnitNumber;
+            _db.Units.Remove(unit);
+            await _db.SaveChangesAsync();
+            await LogAsync("Deleted Unit", "Unit", id.ToString(), $"{number} — {unit.Property.Name}");
+            TempData["Success"] = $"Unit {number} deleted.";
+            return RedirectToAction(nameof(ViewProperty), new { id = propertyId });
+        }
+
+        // ── Role Requests ────────────────────────────────────────────────────────
+        public async Task<IActionResult> RoleRequests(string? status)
+        {
+            var query = _db.RoleRequests.Include(r => r.User).AsQueryable();
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(r => r.Status == status);
+
+            ViewBag.StatusFilter = status;
+            ViewBag.PendingCount = await _db.RoleRequests.CountAsync(r => r.Status == "Pending");
+            return View(await query.OrderByDescending(r => r.RequestedAt).ToListAsync());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveRoleRequest(int id)
+        {
+            var request = await _db.RoleRequests.Include(r => r.User).FirstOrDefaultAsync(r => r.Id == id);
+            if (request == null) return NotFound();
+
+            var user = request.User;
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            await _userManager.AddToRoleAsync(user, request.RequestedRole);
+
+            var reviewer = await _userManager.GetUserAsync(User);
+            request.Status = "Approved";
+            request.ReviewedAt = DateTime.UtcNow;
+            request.ReviewedBy = reviewer!.FullName;
+            await _db.SaveChangesAsync();
+
+            await LogAsync("Approved Role Request", "RoleRequest", id.ToString(), $"{user.FullName} → {request.RequestedRole}");
+            TempData["Success"] = $"{user.FullName} has been approved as {(request.RequestedRole == "PropertyManager" ? "Property Manager" : "Maintenance Staff")}.";
+            return RedirectToAction(nameof(RoleRequests));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectRoleRequest(int id, string? adminNotes)
+        {
+            var request = await _db.RoleRequests.Include(r => r.User).FirstOrDefaultAsync(r => r.Id == id);
+            if (request == null) return NotFound();
+
+            var reviewer = await _userManager.GetUserAsync(User);
+            request.Status = "Rejected";
+            request.ReviewedAt = DateTime.UtcNow;
+            request.ReviewedBy = reviewer!.FullName;
+            request.AdminNotes = adminNotes;
+            await _db.SaveChangesAsync();
+
+            await LogAsync("Rejected Role Request", "RoleRequest", id.ToString(), $"{request.User.FullName} → {request.RequestedRole}");
+            TempData["Success"] = $"Role request from {request.User.FullName} has been rejected.";
+            return RedirectToAction(nameof(RoleRequests));
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────────
         private async Task<List<SelectListItem>> GetManagerOptionsAsync()
         {

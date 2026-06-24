@@ -15,10 +15,21 @@
                    class="btn btn-outline-light btn-lg px-5">Log In</a>
             </div>
         }
+        else if (User.IsInRole("Admin"))
+        {
+            <a asp-controller="Admin" asp-action="Dashboard" asp-area="" class="btn btn-light btn-lg fw-semibold px-5">Go to Dashboard</a>
+        }
+        else if (User.IsInRole("PropertyManager"))
+        {
+            <a asp-controller="Manager" asp-action="Dashboard" asp-area="" class="btn btn-light btn-lg fw-semibold px-5">Go to Dashboard</a>
+        }
+        else if (User.IsInRole("MaintenanceStaff"))
+        {
+            <a asp-controller="Maintenance" asp-action="Dashboard" asp-area="" class="btn btn-light btn-lg fw-semibold px-5">Go to Dashboard</a>
+        }
         else
         {
-            <a asp-controller="Admin" asp-action="Dashboard" asp-area=""
-               class="btn btn-light btn-lg fw-semibold px-5">Go to Dashboard</a>
+            <a asp-controller="Tenant" asp-action="Dashboard" asp-area="" class="btn btn-light btn-lg fw-semibold px-5">Go to Dashboard</a>
         }
     </div>
 </div>

@@ -1,0 +1,124 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var user = ViewBag.User as PropertyManagementPortal.Models.ApplicationUser;
+    var pendingRequest = ViewBag.PendingRequest as PropertyManagementPortal.Models.RoleRequest;
+    var rejectedRequest = ViewBag.RejectedRequest as PropertyManagementPortal.Models.RoleRequest;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <div style="width:52px;height:52px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#1d4ed8;flex-shrink:0;">
+        @(user?.FullName?.FirstOrDefault() ?? '?')
+    </div>
+    <div>
+        <h4 class="fw-bold mb-0">Welcome, @user?.FullName</h4>
+        <span class="badge" style="background:#dcfce7;color:#15803d;">Tenant</span>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Role request status banner -->
+@if (pendingRequest != null)
+{
+    <div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2"/>
+        </svg>
+        <div>
+            <strong>Role Request Pending</strong><br>
+            <span style="font-size:.9rem;">Your request to become a <strong>@(pendingRequest.RequestedRole == "PropertyManager" ? "Property Manager" : "Maintenance Staff")</strong> is awaiting admin approval. You'll be notified once reviewed.</span>
+        </div>
+    </div>
+}
+else if (rejectedRequest != null)
+{
+    <div class="alert alert-danger d-flex align-items-center gap-3 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+        </svg>
+        <div>
+            <strong>Role Request Rejected</strong><br>
+            <span style="font-size:.9rem;">Your request to become a <strong>@(rejectedRequest.RequestedRole == "PropertyManager" ? "Property Manager" : "Maintenance Staff")</strong> was rejected.
+            @if (!string.IsNullOrEmpty(rejectedRequest.AdminNotes))
+            { <span>Reason: @rejectedRequest.AdminNotes</span> }
+            You may submit a new request below.</span>
+        </div>
+    </div>
+}
+
+<!-- Upgrade Your Role -->
+@if (pendingRequest == null)
+{
+    <div class="card mb-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-1">Upgrade Your Role</h5>
+            <p class="text-muted mb-4" style="font-size:.9rem;">Are you a property manager or maintenance staff member? Request a role upgrade and wait for admin approval.</p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card h-100" style="border:2px solid #dbeafe;">
+                        <div class="card-body p-4">
+                            <div style="width:48px;height:48px;background:#dbeafe;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2563eb" viewBox="0 0 16 16">
+                                    <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+                                    <path d="M13 7.293V13.5a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-3h-2v3a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5V7.293l7-7z"/>
+                                </svg>
+                            </div>
+                            <h6 class="fw-bold mb-1">Property Manager</h6>
+                            <p class="text-muted mb-3" style="font-size:.88rem;">Manage properties, units, tenants, and maintenance requests assigned to you.</p>
+                            <form asp-action="RequestRole" asp-controller="Tenant" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="role" value="PropertyManager" />
+                                <button type="submit" class="btn btn-primary btn-sm px-4">Request This Role</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100" style="border:2px solid #fef3c7;">
+                        <div class="card-body p-4">
+                            <div style="width:48px;height:48px;background:#fef3c7;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#d97706" viewBox="0 0 16 16">
+                                    <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3q0-.405-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814z"/>
+                                </svg>
+                            </div>
+                            <h6 class="fw-bold mb-1">Maintenance Staff</h6>
+                            <p class="text-muted mb-3" style="font-size:.88rem;">Receive and handle maintenance job assignments, update statuses, and upload repair evidence.</p>
+                            <form asp-action="RequestRole" asp-controller="Tenant" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="role" value="MaintenanceStaff" />
+                                <button type="submit" class="btn btn-warning btn-sm px-4">Request This Role</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Tenant features placeholder -->
+<div class="card">
+    <div class="card-body p-4 text-center py-5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16" class="mb-3">
+            <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
+        </svg>
+        <h6 class="fw-semibold text-muted">Tenant features coming soon</h6>
+        <p class="text-muted mb-3" style="font-size:.9rem;">View your tenancy, submit maintenance requests, and track payments.</p>
+        <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-primary btn-sm px-4">Go to My Profile</a>
+    </div>
+</div>

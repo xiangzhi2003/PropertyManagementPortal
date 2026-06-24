@@ -1,0 +1,106 @@
+@model PropertyManagementPortal.Models.Unit
+@{ ViewData["Title"] = "Edit Unit"; }
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="ViewProperty" asp-route-id="@Model.PropertyId" class="btn btn-outline-secondary">← Back to Property</a>
+    <h3 class="mb-0" style="font-size:1.4rem;font-weight:700;">Edit Unit</h3>
+</div>
+
+<div class="row g-4">
+    <!-- Left: editable form -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-4">Unit Details</h6>
+
+                <form asp-action="EditUnit" asp-route-id="@Model.UnitId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label detail-field-label">Unit Number <span class="text-danger">*</span></label>
+                        <input type="text" name="unitNumber" class="form-control"
+                               value="@Model.UnitNumber" maxlength="20" required />
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label detail-field-label">Type <span class="text-danger">*</span></label>
+                            <select name="type" class="form-select" required>
+                                <option value="Studio" selected="@(Model.Type == "Studio")">Studio</option>
+                                <option value="1BR" selected="@(Model.Type == "1BR")">1 Bedroom</option>
+                                <option value="2BR" selected="@(Model.Type == "2BR")">2 Bedrooms</option>
+                                <option value="3BR" selected="@(Model.Type == "3BR")">3 Bedrooms</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label detail-field-label">Floor <span class="text-danger">*</span></label>
+                            <input type="number" name="floor" class="form-control"
+                                   value="@Model.Floor" min="0" max="200" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label detail-field-label">Monthly Rent (RM) <span class="text-danger">*</span></label>
+                        <input type="number" name="rentAmount" class="form-control"
+                               value="@Model.RentAmount" min="0" step="0.01" required />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label detail-field-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3" maxlength="500">@Model.Description</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                        <a asp-action="ViewProperty" asp-route-id="@Model.PropertyId"
+                           class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: read-only summary -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body p-4">
+                <!-- Unit icon + header -->
+                <div class="text-center mb-4 pb-3" style="border-bottom:1px solid #f3f4f6;">
+                    <div style="width:56px;height:56px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="#16a34a" viewBox="0 0 16 16">
+                            <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5z"/>
+                        </svg>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.1rem;">@Model.UnitNumber</div>
+                    <div class="text-muted" style="font-size:.88rem;">@Model.Property?.Name</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-field-label">Property</div>
+                    <div class="detail-field-value">@Model.Property?.Name</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Current Status</div>
+                    <div class="detail-field-value">
+                        @if (Model.Status == "Occupied")
+                        { <span class="badge bg-success">Occupied</span> }
+                        else
+                        { <span class="badge bg-warning text-dark">Vacant</span> }
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-field-label">Unit ID</div>
+                    <div class="detail-field-value text-muted">#@Model.UnitId</div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <div class="mt-3 pt-3" style="border-top:1px solid #f3f4f6;">
+                        <div class="detail-field-label mb-1">Description</div>
+                        <div class="text-muted" style="font-size:.88rem;">@Model.Description</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

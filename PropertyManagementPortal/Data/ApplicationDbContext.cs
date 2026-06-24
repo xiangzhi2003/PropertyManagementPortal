@@ -19,6 +19,7 @@ namespace PropertyManagementPortal.Data
         public DbSet<MaintenanceUpdate> MaintenanceUpdates { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<RoleRequest> RoleRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
