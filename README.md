@@ -133,6 +133,78 @@ A centralized web platform for managing properties, tenants, maintenance request
 
 ---
 
+## How the Code Is Organized (MVC Pattern)
+
+This project follows the **MVC (Model-View-Controller)** pattern. Every feature is split into three parts:
+
+### Areas (Login & Registration)
+`Areas/Identity/` contains all the login, register, and account management pages. These are provided by ASP.NET Core Identity (a built-in auth library) and we customized them. Think of Areas as a sub-application — it has its own pages, layouts, and logic, separate from the main MVC structure.
+
+### Models (`Models/`)
+Models represent the **database tables**. Each `.cs` file in `Models/` maps directly to a table in PostgreSQL via Entity Framework Core. You define the fields (columns) here, and EF Core creates/updates the actual table when you run `dotnet ef database update`.
+
+Example: `Unit.cs` has fields `UnitNumber`, `Type`, `RentAmount`, `Floor`, `Status` → these become columns in the `Units` table.
+
+### Controllers (`Controllers/`)
+Controllers are the **brain**. When a user clicks a link or submits a form, a controller action runs. It:
+1. Reads data from the database (via `ApplicationDbContext`)
+2. Packages the data into a ViewModel (or passes a Model directly)
+3. Returns a View to display
+
+Example: User visits `/Admin/Users` → `AdminController.Users()` runs → queries the DB for all users → passes the list to `Views/Admin/Users.cshtml`.
+
+Each role has its own controller:
+- `AdminController.cs` — handles all admin pages
+- `TenantController.cs` — handles tenant pages
+- `ManagerController.cs` — handles property manager pages
+- `MaintenanceController.cs` — handles maintenance staff pages
+
+Controllers are protected with `[Authorize(Roles = "RoleName")]` so only the right role can access them.
+
+### Views (`Views/`)
+Views are the **HTML pages** the user sees. They receive data from the controller and render it. Views use Razor syntax (`.cshtml`) which is HTML mixed with C# `@` expressions.
+
+Each role has its own subfolder:
+- `Views/Admin/` — all admin pages
+- `Views/Tenant/` — tenant pages
+- `Views/Manager/` — property manager pages
+- `Views/Maintenance/` — maintenance staff pages
+- `Views/Shared/` — shared layouts and partials used by all roles
+
+### ViewModels (`ViewModels/`)
+ViewModels are **data containers made for a specific view**. Instead of passing a raw database model (which may have 20+ fields), the controller creates a ViewModel with only the fields that page needs.
+
+Example: `EditUserViewModel` has `FullName`, `PhoneNumber`, `Role`, `CreatedAt` — exactly what the Edit User page needs. The raw `ApplicationUser` DB model also has password hashes, security stamps, and other Identity fields the view should never touch.
+
+Only the Admin panel uses ViewModels right now (it's the most complex). Other roles can pass models directly for simpler pages.
+
+### The Full Flow
+
+```
+User clicks a link or submits a form
+        ↓
+Controller action runs (e.g. AdminController.EditUser)
+        ↓
+Controller queries the database via ApplicationDbContext
+        ↓
+Controller creates a ViewModel and fills it with data
+        ↓
+Controller returns View(viewModel)
+        ↓
+View (.cshtml) renders the HTML using the ViewModel data
+        ↓
+HTML page sent back to the user's browser
+```
+
+### Data Layer (`Data/`)
+- `ApplicationDbContext.cs` — the EF Core database context. It holds a `DbSet<>` for every model (table). Controllers inject this to read/write the DB.
+- `SeedData.cs` — runs on startup to create the four roles (Admin, PropertyManager, Tenant, MaintenanceStaff) if they don't exist yet.
+
+### Migrations (`Migrations/`)
+Every time a Model is added or changed, a migration is created with `dotnet ef migrations add <Name>`. Migrations are the history of DB schema changes. Run `dotnet ef database update` to apply them to the actual database. **Never edit migration files manually.**
+
+---
+
 ## Project Structure
 
 ### Shared Infrastructure (all roles)
