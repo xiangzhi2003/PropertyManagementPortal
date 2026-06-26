@@ -41,9 +41,9 @@ This file is gitignored. It holds real secrets and must never be committed.
 ## Database
 
 - Provider: Npgsql (PostgreSQL) via NeonDB (serverless Postgres, hosted on AWS ap-southeast-1)
-- EF Core migrations in `Migrations/`
+- EF Core migrations in `Database/Migrations/`
 - Run `dotnet ef database update` to apply pending migrations
-- `Data/SeedData.cs` seeds all four roles on startup (Admin user created manually)
+- `Database/Data/SeedData.cs` seeds all four roles on startup (Admin user created manually)
 
 ## Roles
 
@@ -56,8 +56,28 @@ This file is gitignored. It holds real secrets and must never be committed.
 
 ## Key Conventions
 
+## Folder Structure (After Reorganization)
+
+```
+PropertyManagementPortal/   ← project root
+├── Backend/
+│   ├── Controllers/        ← all role controllers
+│   └── ViewModels/Admin/   ← data shapes for admin views
+├── Database/
+│   ├── Models/             ← EF Core entity models (DB tables)
+│   ├── Data/               ← DbContext + SeedData
+│   └── Migrations/         ← auto-generated migration history
+├── Views/                  ← Razor HTML templates (cannot move — ASP.NET convention)
+├── wwwroot/                ← static files (cannot move — ASP.NET convention)
+├── Areas/Identity/         ← login/register/profile (cannot move — ASP.NET convention)
+├── Program.cs
+└── appsettings.json
+```
+
+## Key Conventions
+
 ### ApplicationUser
-`Models/ApplicationUser.cs` extends `IdentityUser`. **Never add a property with the `new` keyword that shadows a base-class property.** This caused a phone-number bug where EF Core saved to the derived property but `UserManager.GetPhoneNumberAsync` always returned null (reads base class via generic constraint). Fix: removed the hiding property; preserved `MaxLength(20)` via fluent API in `OnModelCreating`.
+`Database/Models/ApplicationUser.cs` extends `IdentityUser`. **Never add a property with the `new` keyword that shadows a base-class property.** This caused a phone-number bug where EF Core saved to the derived property but `UserManager.GetPhoneNumberAsync` always returned null (reads base class via generic constraint). Fix: removed the hiding property; preserved `MaxLength(20)` via fluent API in `OnModelCreating`.
 
 ### Registration — Auto Tenant Role
 Both `Areas/Identity/Pages/Account/Register.cshtml.cs` and `ExternalLogin.cshtml.cs` call `AddToRoleAsync(user, "Tenant")` immediately after user creation. Every self-registered user (email or Google OAuth) gets the Tenant role automatically.
@@ -70,17 +90,17 @@ Both `Areas/Identity/Pages/Account/Register.cshtml.cs` and `ExternalLogin.cshtml
 - Tenant (or no role) → `/Tenant/Dashboard`
 
 ### Admin Panel
-- Controller: `Controllers/AdminController.cs` — protected with `[Authorize(Roles = "Admin")]`
+- Controller: `Backend/Controllers/AdminController.cs` — protected with `[Authorize(Roles = "Admin")]`
 - Views: `Views/Admin/` using `Views/Admin/_AdminLayout.cshtml`
 - Every mutating action calls `LogAsync(action, entityType, entityId, details)` to write to `ActivityLogs`
 
 ### Role Panel Controllers
 | Controller | Role | Status |
 |---|---|---|
-| `Controllers/AdminController.cs` | Admin | Full |
-| `Controllers/TenantController.cs` | Tenant | Partial (role request only) |
-| `Controllers/ManagerController.cs` | PropertyManager | Stub |
-| `Controllers/MaintenanceController.cs` | MaintenanceStaff | Stub |
+| `Backend/Controllers/AdminController.cs` | Admin | Full |
+| `Backend/Controllers/TenantController.cs` | Tenant | Partial (role request only) |
+| `Backend/Controllers/ManagerController.cs` | PropertyManager | Stub |
+| `Backend/Controllers/MaintenanceController.cs` | MaintenanceStaff | Stub |
 
 ### Identity Manage Pages
 - `Areas/Identity/Pages/Account/Manage/`
@@ -108,7 +128,7 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 
 ## Feature Specifications
 
-### Admin (BUILT — `Controllers/AdminController.cs`)
+### Admin (BUILT — `Backend/Controllers/AdminController.cs`)
 
 **Dashboard**
 - Stat cards: Total Users, Total Properties, Pending Maintenance, Overdue Payments
@@ -147,11 +167,11 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 - Admin sees pending requests with a badge count in the sidebar
 - Approve: changes user's role immediately
 - Reject: marks request rejected, optionally adds a reason note
-- Model: `Models/RoleRequest.cs` — fields: UserId, RequestedRole, Status, RequestedAt, ReviewedAt, ReviewedBy, AdminNotes
+- Model: `Database/Models/RoleRequest.cs` — fields: UserId, RequestedRole, Status, RequestedAt, ReviewedAt, ReviewedBy, AdminNotes
 
 ---
 
-### Tenant (PARTIAL — `Controllers/TenantController.cs`)
+### Tenant (PARTIAL — `Backend/Controllers/TenantController.cs`)
 
 **Dashboard**
 - Welcome card with name and Tenant role badge
@@ -166,11 +186,11 @@ Call `await LogAsync(action, entityType, entityId, details)` in `AdminController
 
 ---
 
-### Property Manager (STUB — `Controllers/ManagerController.cs`)
+### Property Manager (STUB — `Backend/Controllers/ManagerController.cs`)
 - Stub dashboard: "coming soon" page
 - Full panel: NOT YET BUILT
 
-### Maintenance Staff (STUB — `Controllers/MaintenanceController.cs`)
+### Maintenance Staff (STUB — `Backend/Controllers/MaintenanceController.cs`)
 
 **Planned features**
 - Dashboard: assigned jobs count by status, latest job, completed this month

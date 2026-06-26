@@ -217,43 +217,45 @@ PropertyManagementPortal/                        ← git repo / solution root
     │  # ── BACKEND ────────────────────────────────────────────────────────
     │  # Business logic. Handles HTTP requests, talks to DB, decides what to show.
     │
-    ├── Controllers/
-    │   ├── HomeController.cs                    role-based redirect after login
-    │   ├── AdminController.cs                   all admin actions (users, properties, units, reports)
-    │   ├── TenantController.cs                  tenant dashboard + role upgrade requests
-    │   ├── ManagerController.cs                 property manager panel (stub)
-    │   └── MaintenanceController.cs             maintenance staff panel (stub)
-    │
-    ├── ViewModels/Admin/                        data shapes passed from controller to view
-    │   ├── DashboardViewModel.cs
-    │   ├── UserListViewModel.cs
-    │   ├── CreateUserViewModel.cs
-    │   ├── EditUserViewModel.cs
-    │   ├── PropertyFormViewModel.cs
-    │   └── ReportsViewModel.cs
+    ├── Backend/
+    │   ├── Controllers/
+    │   │   ├── HomeController.cs                role-based redirect after login
+    │   │   ├── AdminController.cs               all admin actions (users, properties, units, reports)
+    │   │   ├── TenantController.cs              tenant dashboard + role upgrade requests
+    │   │   ├── ManagerController.cs             property manager panel (stub)
+    │   │   └── MaintenanceController.cs         maintenance staff panel (stub)
+    │   │
+    │   └── ViewModels/Admin/                    data shapes passed from controller to view
+    │       ├── DashboardViewModel.cs
+    │       ├── UserListViewModel.cs
+    │       ├── CreateUserViewModel.cs
+    │       ├── EditUserViewModel.cs
+    │       ├── PropertyFormViewModel.cs
+    │       └── ReportsViewModel.cs
     │
     ├── Program.cs                               app startup, middleware, DI, auth config
     │
     │  # ── DATABASE ───────────────────────────────────────────────────────
     │  # Data layer. Defines DB tables and connects them to PostgreSQL via EF Core.
     │
-    ├── Models/                                  database table definitions
-    │   ├── ApplicationUser.cs                   user account (extends IdentityUser)
-    │   ├── Property.cs                          property record
-    │   ├── Unit.cs                              unit within a property
-    │   ├── Tenancy.cs                           lease linking a tenant to a unit
-    │   ├── Payment.cs                           rent payment record
-    │   ├── MaintenanceRequest.cs                maintenance job
-    │   ├── MaintenanceUpdate.cs                 status update / note on a job
-    │   ├── Notification.cs                      in-app notifications
-    │   ├── ActivityLog.cs                       admin audit trail
-    │   └── RoleRequest.cs                       tenant role upgrade request
-    │
-    ├── Data/
-    │   ├── ApplicationDbContext.cs              EF Core DbContext — connects models to DB
-    │   └── SeedData.cs                         seeds the 4 roles on first startup
-    │
-    ├── Migrations/                              auto-generated DB schema history
+    ├── Database/
+    │   ├── Models/                              database table definitions
+    │   │   ├── ApplicationUser.cs               user account (extends IdentityUser)
+    │   │   ├── Property.cs                      property record
+    │   │   ├── Unit.cs                          unit within a property
+    │   │   ├── Tenancy.cs                       lease linking a tenant to a unit
+    │   │   ├── Payment.cs                       rent payment record
+    │   │   ├── MaintenanceRequest.cs            maintenance job
+    │   │   ├── MaintenanceUpdate.cs             status update / note on a job
+    │   │   ├── Notification.cs                  in-app notifications
+    │   │   ├── ActivityLog.cs                   admin audit trail
+    │   │   └── RoleRequest.cs                   tenant role upgrade request
+    │   │
+    │   ├── Data/
+    │   │   ├── ApplicationDbContext.cs          EF Core DbContext — connects models to DB
+    │   │   └── SeedData.cs                     seeds the 4 roles on first startup
+    │   │
+    │   └── Migrations/                          auto-generated DB schema history
     │                                            ⚠ never edit these files manually
     │
     │  # ── FRONTEND ───────────────────────────────────────────────────────
@@ -315,9 +317,9 @@ PropertyManagementPortal/                        ← git repo / solution root
 | I want to... | Touch this |
 |---|---|
 | Add or change a page / UI | `Views/` |
-| Add or change business logic / an action | `Controllers/` |
-| Add a new DB table or new field | `Models/` → run `dotnet ef migrations add <Name>` |
-| Pass cleaner data from controller to view | `ViewModels/` |
+| Add or change business logic / an action | `Backend/Controllers/` |
+| Add a new DB table or new field | `Database/Models/` → run `dotnet ef migrations add <Name>` |
+| Pass cleaner data from controller to view | `Backend/ViewModels/` |
 | Change DB connection or auth settings | `appsettings.json` + `Program.cs` |
 | Change login / register / My Profile flow | `Areas/Identity/` |
 
@@ -325,10 +327,10 @@ PropertyManagementPortal/                        ← git repo / solution root
 
 | Role | Controller | Views folder |
 |---|---|---|
-| Admin | `Controllers/AdminController.cs` | `Views/Admin/` |
-| Tenant | `Controllers/TenantController.cs` | `Views/Tenant/` |
-| Property Manager | `Controllers/ManagerController.cs` | `Views/Manager/` |
-| Maintenance Staff | `Controllers/MaintenanceController.cs` | `Views/Maintenance/` |
+| Admin | `Backend/Controllers/AdminController.cs` | `Views/Admin/` |
+| Tenant | `Backend/Controllers/TenantController.cs` | `Views/Tenant/` |
+| Property Manager | `Backend/Controllers/ManagerController.cs` | `Views/Manager/` |
+| Maintenance Staff | `Backend/Controllers/MaintenanceController.cs` | `Views/Maintenance/` |
 
 > `Models/`, `Data/`, and `Areas/Identity/` are **shared by all roles** — do not modify these unless adding a new DB table.
 
