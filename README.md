@@ -207,105 +207,130 @@ Every time a Model is added or changed, a migration is created with `dotnet ef m
 
 ## Project Structure
 
-### Shared Infrastructure (all roles)
-
-| File | Purpose |
-|---|---|
-| `Program.cs` | App startup, DI, auth config, role seeding |
-| `appsettings.json` | DB + Google OAuth secrets (**gitignored**) |
-| `appsettings.example.json` | Safe template to share with teammates |
-| `Data/ApplicationDbContext.cs` | EF Core DbContext, all DbSets, model config |
-| `Data/SeedData.cs` | Seeds all four roles on startup |
-| `Views/Shared/_Layout.cshtml` | Public layout (login/register/home pages) |
-| `Views/Home/Index.cshtml` | Landing page + role-based redirect after login |
-| `wwwroot/css/site.css` | All custom CSS (shared + admin-specific classes) |
-
-**Identity pages** (`Areas/Identity/Pages/Account/`) — used by all roles:
-
-| File | Purpose |
-|---|---|
-| `Login.cshtml / .cs` | Email + Google OAuth login |
-| `Register.cshtml / .cs` | Registration — auto-assigns Tenant role |
-| `ExternalLogin.cshtml / .cs` | Google OAuth callback — auto-assigns Tenant role |
-| `Manage/Index.cshtml / .cs` | My Profile (edit name, phone; view role/status) |
-| `Manage/ChangePassword.cshtml / .cs` | Change password |
-| `Manage/_ManageNav.cshtml` | Trimmed nav (only My Profile + Change Password visible) |
-
-**Models** (`Models/`) — DB tables shared by all roles:
-
-| File | Description |
-|---|---|
-| `ApplicationUser.cs` | Extends IdentityUser — adds FullName, IsActive, CreatedAt |
-| `Property.cs` | Property record |
-| `Unit.cs` | Unit within a property |
-| `Tenancy.cs` | Links a Tenant user to a Unit (lease) |
-| `Payment.cs` | Rent payment record |
-| `MaintenanceRequest.cs` | Maintenance job |
-| `MaintenanceUpdate.cs` | Status update / note on a maintenance job |
-| `Notification.cs` | In-app notifications |
-| `ActivityLog.cs` | Admin audit trail |
-| `RoleRequest.cs` | Tenant → Manager/Staff role upgrade request |
+```
+PropertyManagementPortal/                        ← git repo / solution root
+├── PropertyManagementPortal.sln
+├── README.md
+│
+└── PropertyManagementPortal/                    ← .NET web project
+    │
+    │  # ── BACKEND ────────────────────────────────────────────────────────
+    │  # Business logic. Handles HTTP requests, talks to DB, decides what to show.
+    │
+    ├── Controllers/
+    │   ├── HomeController.cs                    role-based redirect after login
+    │   ├── AdminController.cs                   all admin actions (users, properties, units, reports)
+    │   ├── TenantController.cs                  tenant dashboard + role upgrade requests
+    │   ├── ManagerController.cs                 property manager panel (stub)
+    │   └── MaintenanceController.cs             maintenance staff panel (stub)
+    │
+    ├── ViewModels/Admin/                        data shapes passed from controller to view
+    │   ├── DashboardViewModel.cs
+    │   ├── UserListViewModel.cs
+    │   ├── CreateUserViewModel.cs
+    │   ├── EditUserViewModel.cs
+    │   ├── PropertyFormViewModel.cs
+    │   └── ReportsViewModel.cs
+    │
+    ├── Program.cs                               app startup, middleware, DI, auth config
+    │
+    │  # ── DATABASE ───────────────────────────────────────────────────────
+    │  # Data layer. Defines DB tables and connects them to PostgreSQL via EF Core.
+    │
+    ├── Models/                                  database table definitions
+    │   ├── ApplicationUser.cs                   user account (extends IdentityUser)
+    │   ├── Property.cs                          property record
+    │   ├── Unit.cs                              unit within a property
+    │   ├── Tenancy.cs                           lease linking a tenant to a unit
+    │   ├── Payment.cs                           rent payment record
+    │   ├── MaintenanceRequest.cs                maintenance job
+    │   ├── MaintenanceUpdate.cs                 status update / note on a job
+    │   ├── Notification.cs                      in-app notifications
+    │   ├── ActivityLog.cs                       admin audit trail
+    │   └── RoleRequest.cs                       tenant role upgrade request
+    │
+    ├── Data/
+    │   ├── ApplicationDbContext.cs              EF Core DbContext — connects models to DB
+    │   └── SeedData.cs                         seeds the 4 roles on first startup
+    │
+    ├── Migrations/                              auto-generated DB schema history
+    │                                            ⚠ never edit these files manually
+    │
+    │  # ── FRONTEND ───────────────────────────────────────────────────────
+    │  # Presentation layer. HTML pages and static files the browser receives.
+    │
+    ├── Views/                                   Razor .cshtml templates
+    │   ├── Admin/
+    │   │   ├── _AdminLayout.cshtml              sidebar layout used by all admin pages
+    │   │   ├── Dashboard.cshtml
+    │   │   ├── Users.cshtml
+    │   │   ├── CreateUser.cshtml
+    │   │   ├── EditUser.cshtml
+    │   │   ├── ViewUser.cshtml
+    │   │   ├── Properties.cshtml
+    │   │   ├── AddProperty.cshtml
+    │   │   ├── EditProperty.cshtml
+    │   │   ├── ViewProperty.cshtml              includes add / edit / delete unit
+    │   │   ├── EditUnit.cshtml
+    │   │   ├── Reports.cshtml
+    │   │   ├── ActivityLog.cshtml
+    │   │   └── RoleRequests.cshtml
+    │   ├── Tenant/
+    │   │   └── Dashboard.cshtml                role upgrade request UI
+    │   ├── Manager/
+    │   │   └── Dashboard.cshtml                stub — coming soon
+    │   ├── Maintenance/
+    │   │   └── Dashboard.cshtml                stub — coming soon
+    │   ├── Home/
+    │   │   └── Index.cshtml                    landing page + role-based redirect
+    │   └── Shared/
+    │       ├── _Layout.cshtml                  public layout (login, register, home)
+    │       └── _LoginPartial.cshtml            login / logout nav buttons
+    │
+    ├── wwwroot/                                 static files served directly to browser
+    │   └── css/site.css                        all custom CSS and Bootstrap overrides
+    │
+    │  # ── AUTHENTICATION ─────────────────────────────────────────────────
+    │  # Login, register, Google OAuth, My Profile — powered by ASP.NET Core Identity.
+    │
+    ├── Areas/Identity/Pages/Account/
+    │   ├── Login.cshtml / .cs                  email + Google OAuth login
+    │   ├── Register.cshtml / .cs               registration — auto-assigns Tenant role
+    │   ├── ExternalLogin.cshtml / .cs          Google OAuth callback
+    │   └── Manage/
+    │       ├── Index.cshtml / .cs              My Profile (edit name, phone)
+    │       └── ChangePassword.cshtml / .cs
+    │
+    │  # ── CONFIG ──────────────────────────────────────────────────────────
+    │  # Environment-specific settings. Never commit appsettings.json.
+    │
+    ├── appsettings.json                         DB + Google OAuth secrets (gitignored)
+    └── appsettings.example.json                 safe template to share with teammates
+```
 
 ---
 
-### Admin
+### Which folder do I work in?
 
-> Controller: `Controllers/AdminController.cs` — `[Authorize(Roles = "Admin")]`
-> Layout: `Views/Admin/_AdminLayout.cshtml`
-
-| View | Purpose |
+| I want to... | Touch this |
 |---|---|
-| `Views/Admin/Dashboard.cshtml` | Stat cards + recent activity feed |
-| `Views/Admin/Users.cshtml` | User list with search/filter |
-| `Views/Admin/CreateUser.cshtml` | Create new user form |
-| `Views/Admin/EditUser.cshtml` | Edit user details + role |
-| `Views/Admin/ViewUser.cshtml` | Read-only user detail page |
-| `Views/Admin/Properties.cshtml` | Property list with search/filter |
-| `Views/Admin/AddProperty.cshtml` | Add property form |
-| `Views/Admin/EditProperty.cshtml` | Edit property form |
-| `Views/Admin/ViewProperty.cshtml` | Property detail + units table (add/edit/delete) |
-| `Views/Admin/EditUnit.cshtml` | Edit unit form |
-| `Views/Admin/Reports.cshtml` | Occupancy, payment, maintenance summaries |
-| `Views/Admin/ActivityLog.cshtml` | Paginated audit log |
-| `Views/Admin/RoleRequests.cshtml` | Approve/reject tenant role upgrade requests |
+| Add or change a page / UI | `Views/` |
+| Add or change business logic / an action | `Controllers/` |
+| Add a new DB table or new field | `Models/` → run `dotnet ef migrations add <Name>` |
+| Pass cleaner data from controller to view | `ViewModels/` |
+| Change DB connection or auth settings | `appsettings.json` + `Program.cs` |
+| Change login / register / My Profile flow | `Areas/Identity/` |
 
-ViewModels in `ViewModels/Admin/`: `DashboardViewModel`, `UserListViewModel`, `CreateUserViewModel`, `EditUserViewModel`, `PropertyFormViewModel`, `ReportsViewModel`
+### Role ownership
 
----
+| Role | Controller | Views folder |
+|---|---|---|
+| Admin | `Controllers/AdminController.cs` | `Views/Admin/` |
+| Tenant | `Controllers/TenantController.cs` | `Views/Tenant/` |
+| Property Manager | `Controllers/ManagerController.cs` | `Views/Manager/` |
+| Maintenance Staff | `Controllers/MaintenanceController.cs` | `Views/Maintenance/` |
 
-### Tenant *(partial)*
-
-> Controller: `Controllers/TenantController.cs` — `[Authorize(Roles = "Tenant")]`
-
-| File | Purpose |
-|---|---|
-| `Views/Tenant/Dashboard.cshtml` | Role upgrade request UI (request Manager or Staff role) |
-
-*Tenancy details, maintenance requests, payment history — not yet built*
-
----
-
-### Property Manager *(stub)*
-
-> Controller: `Controllers/ManagerController.cs` — `[Authorize(Roles = "PropertyManager")]`
-
-| File | Purpose |
-|---|---|
-| `Views/Manager/Dashboard.cshtml` | "Coming soon" placeholder |
-
----
-
-### Maintenance Staff *(stub)*
-
-> Controller: `Controllers/MaintenanceController.cs` — `[Authorize(Roles = "MaintenanceStaff")]`
-
-| File | Purpose |
-|---|---|
-| `Views/Maintenance/Dashboard.cshtml` | "Coming soon" placeholder |
-
----
-
-> **Rule of thumb:** each role owns its `Controllers/XController.cs` + `Views/X/` folder. `Models/`, `Data/`, and `Areas/Identity/` are shared — teammates generally don't need to modify those.
+> `Models/`, `Data/`, and `Areas/Identity/` are **shared by all roles** — do not modify these unless adding a new DB table.
 
 ---
 
