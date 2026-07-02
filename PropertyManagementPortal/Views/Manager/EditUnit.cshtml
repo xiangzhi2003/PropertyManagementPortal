@@ -1,0 +1,116 @@
+@using PropertyManagementPortal.ViewModels.Manager
+@model UnitFormViewModel
+@{ ViewData["Title"] = "Edit Unit"; }
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a asp-action="Units" class="btn btn-sm btn-outline-secondary">&larr; Back</a>
+    <h4 class="fw-bold mb-0">Edit Unit</h4>
+</div>
+
+<div class="row g-4">
+    <!-- Form -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post" asp-action="EditUnit">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+                    <input type="hidden" asp-for="UnitId" />
+                    <input type="hidden" asp-for="PropertyId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Property</label>
+                        <input class="form-control" value="@Model.PropertyName" disabled />
+                        <span class="text-muted" style="font-size:.8rem;">A unit cannot be moved to another property.</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="UnitNumber" class="form-label"></label>
+                        <input asp-for="UnitNumber" class="form-control" maxlength="20" />
+                        <span asp-validation-for="UnitNumber" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Type" class="form-label"></label>
+                            <select asp-for="Type" class="form-select">
+                                <option value="">Select</option>
+                                @foreach (var t in UnitFormViewModel.UnitTypes)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Type" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Status" class="form-label"></label>
+                            <select asp-for="Status" class="form-select">
+                                @foreach (var s in UnitFormViewModel.UnitStatuses)
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RentAmount" class="form-label"></label>
+                            <div class="input-group">
+                                <span class="input-group-text">RM</span>
+                                <input asp-for="RentAmount" class="form-control" type="number" step="0.01" min="0.01" />
+                            </div>
+                            <span asp-validation-for="RentAmount" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Floor" class="form-label"></label>
+                            <input asp-for="Floor" class="form-control" type="number" min="0" />
+                            <span asp-validation-for="Floor" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="2" maxlength="500"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                        <a asp-action="Units" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary card -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-3">Summary</h6>
+                <div class="mb-2 d-flex justify-content-between">
+                    <span class="text-muted small">Property</span>
+                    <span class="fw-semibold small">@Model.PropertyName</span>
+                </div>
+                <div class="mb-2 d-flex justify-content-between">
+                    <span class="text-muted small">Unit</span>
+                    <span class="fw-semibold small">@Model.UnitNumber</span>
+                </div>
+                <div class="mb-2 d-flex justify-content-between">
+                    <span class="text-muted small">Type</span>
+                    <span class="fw-semibold small">@Model.Type</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Status</span>
+                    <span class="fw-semibold small">@Model.Status</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
