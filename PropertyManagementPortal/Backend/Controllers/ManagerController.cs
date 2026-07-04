@@ -347,5 +347,91 @@ namespace PropertyManagementPortal.Controllers
             TempData["Success"] = "Application rejected.";
             return RedirectToAction(nameof(Applications));
         }
+ 
+        // ── TRACK RENT PAYMENTS ──────────────────────────────────────────────
+ 
+        public async Task<IActionResult> Payments(string? status, int? propertyId)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var query = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
+ 
+            if (propertyId.HasValue)
+                query = query.Where(p => p.Tenancy.Unit.PropertyId == propertyId.Value);
+ 
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(p => p.Status == status);
+ 
+            var rows = await query
+                .OrderBy(p => p.DueDate)
+                .Select(p => new PaymentRowViewModel
+                {
+                    PaymentId = p.PaymentId,
+                    TenantName = p.Tenancy.Tenant.FullName,
+                    PropertyName = p.Tenancy.Unit.Property.Name,
+                    UnitNumber = p.Tenancy.Unit.UnitNumber,
+                    Amount = p.Amount,
+                    DueDate = p.DueDate,
+                    PaymentDate = p.PaymentDate,
+                    Status = p.Status,
+                    Notes = p.Notes
+                })
+                .ToListAsync();
+ 
+            // Order: Overdue first, then Pending, then Paid; soonest due within each.
+            rows = rows
+                .OrderBy(r => r.Status == "Overdue" ? 0 : r.Status == "Pending" ? 1 : 2)
+                .ThenBy(r => r.DueDate)
+                .ToList();
+ 
+            // Summary reflects ALL payments in the manager's units (ignores filters).
+            var all = await _db.Payments
+                .Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId))
+                .Select(p => new { p.Status, p.Amount })
+                .ToListAsync();
+ 
+            var vm = new PaymentListViewModel
+            {
+                Payments = rows,
+                StatusFilter = status,
+                PropertyFilter = propertyId,
+                PropertyOptions = await GetPropertyOptionsAsync(),
+                PendingCount = all.Count(x => x.Status == "Pending"),
+                OverdueCount = all.Count(x => x.Status == "Overdue"),
+                PaidCount = all.Count(x => x.Status == "Paid"),
+                OutstandingAmount = all.Where(x => x.Status != "Paid").Sum(x => x.Amount)
+            };
+ 
+            return View(vm);
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkPaid(int id)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var payment = await _db.Payments
+                .FirstOrDefaultAsync(p => p.PaymentId == id && propertyIds.Contains(p.Tenancy.Unit.PropertyId));
+ 
+            if (payment == null)
+            {
+                TempData["Error"] = "Payment not found or not in your properties.";
+                return RedirectToAction(nameof(Payments));
+            }
+ 
+            if (payment.Status == "Paid")
+            {
+                TempData["Error"] = "This payment is already marked as paid.";
+                return RedirectToAction(nameof(Payments));
+            }
+ 
+            payment.Status = "Paid";
+            payment.PaymentDate = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+ 
+            TempData["Success"] = "Payment marked as received.";
+            return RedirectToAction(nameof(Payments));
+        }
     }
 }
