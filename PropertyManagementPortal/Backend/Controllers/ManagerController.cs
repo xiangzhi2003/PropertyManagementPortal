@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
@@ -20,40 +21,50 @@ namespace PropertyManagementPortal.Controllers
             _userManager = userManager;
         }
  
+        // ── SCOPING HELPERS ──────────────────────────────────────────────────
+        // Every Manager action is limited to the properties assigned to the
+        // logged-in manager. These two helpers are the single source of truth.
+ 
+        private async Task<List<int>> GetManagedPropertyIdsAsync()
+        {
+            var userId = _userManager.GetUserId(User);
+            return await _db.Properties
+                .Where(p => p.ManagerId == userId)
+                .Select(p => p.PropertyId)
+                .ToListAsync();
+        }
+ 
+        private async Task<List<SelectListItem>> GetPropertyOptionsAsync()
+        {
+            var userId = _userManager.GetUserId(User);
+            return await _db.Properties
+                .Where(p => p.ManagerId == userId)
+                .OrderBy(p => p.Name)
+                .Select(p => new SelectListItem { Value = p.PropertyId.ToString(), Text = p.Name })
+                .ToListAsync();
+        }
+        // ─────────────────────────────────────────────────────────────────────
+ 
         public async Task<IActionResult> Dashboard()
         {
             var user = await _userManager.GetUserAsync(User);
+            var propertyIds = await GetManagedPropertyIdsAsync();
  
-            // ── SCOPING PATTERN ──────────────────────────────────────────────
-            // A manager only ever sees data belonging to the properties assigned
-            // to them. Everything else in this controller reuses these two lists.
- 
-            // 1. Every property this manager is assigned to (they may have several)
-            var propertyIds = await _db.Properties
-                .Where(p => p.ManagerId == user!.Id)
-                .Select(p => p.PropertyId)
-                .ToListAsync();
- 
-            // 2. Every unit inside those properties
             var units = await _db.Units
                 .Where(u => propertyIds.Contains(u.PropertyId))
                 .ToListAsync();
  
             var unitIds = units.Select(u => u.UnitId).ToList();
-            // ─────────────────────────────────────────────────────────────────
  
-            // Pending tenant applications (Tenancy → Unit)
             var pendingApplications = await _db.Tenancies
                 .CountAsync(t => unitIds.Contains(t.UnitId) && t.Status == "Pending");
  
-            // Rent dues (Payment → Tenancy → Unit)
             var pendingPayments = await _db.Payments
                 .CountAsync(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Pending");
  
             var overduePayments = await _db.Payments
                 .CountAsync(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Overdue");
  
-            // Maintenance requests not yet assigned to any staff (MaintenanceRequest → Unit)
             var unassignedMaintenance = await _db.MaintenanceRequests
                 .CountAsync(m => unitIds.Contains(m.UnitId) && m.AssignedStaffId == null);
  
@@ -71,6 +82,150 @@ namespace PropertyManagementPortal.Controllers
             };
  
             return View(vm);
+        }
+ 
+        // ── MANAGE UNITS ─────────────────────────────────────────────────────
+ 
+        public async Task<IActionResult> Units(int? propertyId, string? status, string? search)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var query = _db.Units.Where(u => propertyIds.Contains(u.PropertyId));
+ 
+            if (propertyId.HasValue)
+                query = query.Where(u => u.PropertyId == propertyId.Value);
+ 
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(u => u.Status == status);
+ 
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(u => u.UnitNumber.Contains(search));
+ 
+            var rows = await query
+                .OrderBy(u => u.Property.Name).ThenBy(u => u.UnitNumber)
+                .Select(u => new UnitRowViewModel
+                {
+                    UnitId = u.UnitId,
+                    PropertyName = u.Property.Name,
+                    UnitNumber = u.UnitNumber,
+                    Type = u.Type,
+                    RentAmount = u.RentAmount,
+                    Status = u.Status,
+                    Floor = u.Floor
+                })
+                .ToListAsync();
+ 
+            var vm = new UnitListViewModel
+            {
+                Units = rows,
+                PropertyFilter = propertyId,
+                StatusFilter = status,
+                SearchTerm = search,
+                PropertyOptions = await GetPropertyOptionsAsync()
+            };
+ 
+            return View(vm);
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddUnit(UnitFormViewModel vm)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            // Ownership guard: can only add to a property you manage.
+            if (!propertyIds.Contains(vm.PropertyId))
+            {
+                TempData["Error"] = "You can only add units to your own properties.";
+                return RedirectToAction(nameof(Units));
+            }
+ 
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Please check the unit details and try again.";
+                return RedirectToAction(nameof(Units));
+            }
+ 
+            _db.Units.Add(new Unit
+            {
+                PropertyId = vm.PropertyId,
+                UnitNumber = vm.UnitNumber,
+                Type = vm.Type,
+                RentAmount = vm.RentAmount,
+                Status = vm.Status,
+                Floor = vm.Floor,
+                Description = vm.Description
+            });
+            await _db.SaveChangesAsync();
+ 
+            TempData["Success"] = $"Unit {vm.UnitNumber} added.";
+            return RedirectToAction(nameof(Units));
+        }
+ 
+        [HttpGet]
+        public async Task<IActionResult> EditUnit(int id)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var unit = await _db.Units
+                .Include(u => u.Property)
+                .FirstOrDefaultAsync(u => u.UnitId == id && propertyIds.Contains(u.PropertyId));
+ 
+            if (unit == null)
+            {
+                TempData["Error"] = "Unit not found or not in your properties.";
+                return RedirectToAction(nameof(Units));
+            }
+ 
+            var vm = new UnitFormViewModel
+            {
+                UnitId = unit.UnitId,
+                PropertyId = unit.PropertyId,
+                PropertyName = unit.Property.Name,
+                UnitNumber = unit.UnitNumber,
+                Type = unit.Type,
+                RentAmount = unit.RentAmount,
+                Status = unit.Status,
+                Floor = unit.Floor,
+                Description = unit.Description
+            };
+ 
+            return View(vm);
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditUnit(UnitFormViewModel vm)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            // Re-fetch and re-check ownership before touching anything.
+            var unit = await _db.Units
+                .FirstOrDefaultAsync(u => u.UnitId == vm.UnitId && propertyIds.Contains(u.PropertyId));
+ 
+            if (unit == null)
+            {
+                TempData["Error"] = "Unit not found or not in your properties.";
+                return RedirectToAction(nameof(Units));
+            }
+ 
+            if (!ModelState.IsValid)
+            {
+                vm.PropertyName = (await _db.Properties.FindAsync(unit.PropertyId))?.Name;
+                return View(vm);
+            }
+ 
+            // Property is intentionally NOT reassigned here — a unit stays in its property.
+            unit.UnitNumber = vm.UnitNumber;
+            unit.Type = vm.Type;
+            unit.RentAmount = vm.RentAmount;
+            unit.Status = vm.Status;
+            unit.Floor = vm.Floor;
+            unit.Description = vm.Description;
+            await _db.SaveChangesAsync();
+ 
+            TempData["Success"] = $"Unit {unit.UnitNumber} updated.";
+            return RedirectToAction(nameof(Units));
         }
     }
 }
