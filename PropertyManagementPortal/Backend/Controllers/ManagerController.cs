@@ -227,5 +227,125 @@ namespace PropertyManagementPortal.Controllers
             TempData["Success"] = $"Unit {unit.UnitNumber} updated.";
             return RedirectToAction(nameof(Units));
         }
+ 
+        // ── TENANT APPLICATIONS ──────────────────────────────────────────────
+ 
+        public async Task<IActionResult> Applications(string? status)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var query = _db.Tenancies.Where(t => propertyIds.Contains(t.Unit.PropertyId));
+ 
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(t => t.Status == status);
+ 
+            var rows = await query
+                .OrderByDescending(t => t.CreatedAt)
+                .Select(t => new ApplicationRowViewModel
+                {
+                    TenancyId = t.TenancyId,
+                    TenantName = t.Tenant.FullName,
+                    TenantEmail = t.Tenant.Email!,
+                    PropertyName = t.Unit.Property.Name,
+                    UnitNumber = t.Unit.UnitNumber,
+                    StartDate = t.StartDate,
+                    EndDate = t.EndDate,
+                    Status = t.Status,
+                    CreatedAt = t.CreatedAt,
+                    Notes = t.Notes
+                })
+                .ToListAsync();
+ 
+            // Show pending first so the actionable ones are on top.
+            rows = rows
+                .OrderBy(r => r.Status == "Pending" ? 0 : 1)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList();
+ 
+            var vm = new ApplicationListViewModel
+            {
+                Applications = rows,
+                StatusFilter = status,
+                PendingCount = rows.Count(r => r.Status == "Pending")
+            };
+ 
+            return View(vm);
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveApplication(int id)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var tenancy = await _db.Tenancies
+                .Include(t => t.Unit)
+                .FirstOrDefaultAsync(t => t.TenancyId == id && propertyIds.Contains(t.Unit.PropertyId));
+ 
+            if (tenancy == null)
+            {
+                TempData["Error"] = "Application not found or not in your properties.";
+                return RedirectToAction(nameof(Applications));
+            }
+ 
+            if (tenancy.Status != "Pending")
+            {
+                TempData["Error"] = "Only pending applications can be approved.";
+                return RedirectToAction(nameof(Applications));
+            }
+ 
+            // Approve this application and occupy the unit.
+            tenancy.Status = "Approved";
+            tenancy.Unit.Status = "Occupied";
+ 
+            // Auto-reject every other pending application on the same unit —
+            // a unit can only be assigned to one tenant.
+            var others = await _db.Tenancies
+                .Where(t => t.UnitId == tenancy.UnitId
+                         && t.TenancyId != tenancy.TenancyId
+                         && t.Status == "Pending")
+                .ToListAsync();
+ 
+            foreach (var other in others)
+            {
+                other.Status = "Rejected";
+                other.Notes = "Automatically declined — the unit was assigned to another applicant.";
+            }
+ 
+            await _db.SaveChangesAsync();
+ 
+            var extra = others.Count > 0 ? $" {others.Count} other pending application(s) were auto-declined." : "";
+            TempData["Success"] = $"Application approved and unit {tenancy.Unit.UnitNumber} marked as occupied.{extra}";
+            return RedirectToAction(nameof(Applications));
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectApplication(int id, string? reason)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var tenancy = await _db.Tenancies
+                .FirstOrDefaultAsync(t => t.TenancyId == id && propertyIds.Contains(t.Unit.PropertyId));
+ 
+            if (tenancy == null)
+            {
+                TempData["Error"] = "Application not found or not in your properties.";
+                return RedirectToAction(nameof(Applications));
+            }
+ 
+            if (tenancy.Status != "Pending")
+            {
+                TempData["Error"] = "Only pending applications can be rejected.";
+                return RedirectToAction(nameof(Applications));
+            }
+ 
+            tenancy.Status = "Rejected";
+            tenancy.Notes = string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason.Trim();
+            await _db.SaveChangesAsync();
+ 
+            TempData["Success"] = "Application rejected.";
+            return RedirectToAction(nameof(Applications));
+        }
     }
 }
