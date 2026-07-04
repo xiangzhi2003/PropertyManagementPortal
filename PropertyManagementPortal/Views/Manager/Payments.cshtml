@@ -1,0 +1,129 @@
+@using PropertyManagementPortal.ViewModels.Manager
+@model PaymentListViewModel
+@{ ViewData["Title"] = "Rent Payments"; }
+
+<div class="mb-4">
+    <h4 class="fw-bold mb-0">Rent Payments</h4>
+    <span class="text-muted small">Track and record rent payments across your properties</span>
+</div>
+
+<!-- Summary strip -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+            <p class="stat-label mb-1">Outstanding</p>
+            <div class="fw-bold" style="font-size:1.4rem;color:#dc2626;">RM @Model.OutstandingAmount.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+            <p class="stat-label mb-1">Overdue</p>
+            <div class="fw-bold" style="font-size:1.4rem;color:#dc2626;">@Model.OverdueCount</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+            <p class="stat-label mb-1">Pending</p>
+            <div class="fw-bold" style="font-size:1.4rem;color:#d97706;">@Model.PendingCount</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+            <p class="stat-label mb-1">Paid</p>
+            <div class="fw-bold" style="font-size:1.4rem;color:#16a34a;">@Model.PaidCount</div>
+        </div></div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Payments" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Property</label>
+                <select name="propertyId" class="form-select form-select-sm" asp-items="Model.PropertyOptions">
+                    <option value="">All properties</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All statuses</option>
+                    @foreach (var s in new[] { "Overdue", "Pending", "Paid" })
+                    {
+                        <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-outline-primary flex-grow-1">Filter</button>
+                <a asp-action="Payments" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Payments table -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="background:#f8fafc;">
+                <tr>
+                    <th class="ps-3">Tenant</th>
+                    <th>Property / Unit</th>
+                    <th>Amount</th>
+                    <th>Due Date</th>
+                    <th>Paid Date</th>
+                    <th>Status</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Payments.Any())
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No payments found.</td></tr>
+                }
+                else
+                {
+                    @foreach (var p in Model.Payments)
+                    {
+                        var (bg, fg) = p.Status switch
+                        {
+                            "Paid" => ("#dcfce7", "#16a34a"),
+                            "Overdue" => ("#fee2e2", "#dc2626"),
+                            _ => ("#fef3c7", "#d97706")
+                        };
+                        <tr>
+                            <td class="ps-3 fw-semibold">@p.TenantName</td>
+                            <td>
+                                <div class="fw-semibold">@p.PropertyName</div>
+                                <div class="text-muted" style="font-size:.8rem;">Unit @p.UnitNumber</div>
+                            </td>
+                            <td class="fw-semibold">RM @p.Amount.ToString("N2")</td>
+                            <td class="small @(p.Status == "Overdue" ? "text-danger fw-semibold" : "")">
+                                @p.DueDate.ToString("dd MMM yyyy")
+                            </td>
+                            <td class="small">@(p.PaymentDate.HasValue ? p.PaymentDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                            <td><span class="badge" style="background:@bg;color:@fg;">@p.Status</span></td>
+                            <td class="text-end pe-3">
+                                @if (p.Status != "Paid")
+                                {
+                                    <form method="post" asp-action="MarkPaid" class="d-inline"
+                                          onsubmit="return confirm('Mark this payment as received today?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@p.PaymentId" />
+                                        <button type="submit" class="btn btn-sm btn-success">Mark as Received</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
