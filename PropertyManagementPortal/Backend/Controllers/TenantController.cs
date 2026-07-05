@@ -110,7 +110,7 @@ namespace PropertyManagementPortal.Controllers
             if (user == null) return Challenge();
 
             // prevent duplicate application
-            var existing = await _db.UnitApplications
+            var existing = await _db.Tenancies
                 .AnyAsync(a => a.UnitId == unitId && a.TenantId == user.Id && a.Status == "Pending");
 
             if (existing)
@@ -119,19 +119,53 @@ namespace PropertyManagementPortal.Controllers
                 return RedirectToAction(nameof(BrowseUnits));
             }
 
-            var application = new UnitApplication
+            var application = new Tenancy
             {
                 UnitId = unitId,
                 TenantId = user.Id,
-                Status = "Pending",
-                AppliedAt = DateTime.UtcNow
+                Status = "Pending"
             };
 
-            _db.UnitApplications.Add(application);
+            _db.Tenancies.Add(application);
             await _db.SaveChangesAsync();
 
             TempData["Success"] = "Application submitted successfully.";
             return RedirectToAction(nameof(BrowseUnits));
+        }
+
+        public async Task<IActionResult> MyApplications()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var applications = await _db.Tenancies
+                .Include(a => a.Unit)
+                .ThenInclude(u => u.Property)
+                .Where(a => a.TenantId == user.Id)
+                .ToListAsync();
+
+            return View(applications);
+        }
+
+        public IActionResult Maintenance()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Maintenance(MaintenanceRequest model)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            model.TenantId = user.Id;
+            model.Status = "Pending";
+            model.CreatedAt = DateTime.UtcNow;
+
+            _db.MaintenanceRequests.Add(model);
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = "Maintenance request submitted.";
+            return RedirectToAction(nameof(Maintenance));
         }
     }
 }
