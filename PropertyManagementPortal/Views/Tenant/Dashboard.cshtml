@@ -118,57 +118,61 @@ else if (rejectedRequest != null)
 <div class="card mb-4">
     <div class="card-body">
 
-        <h5 class="fw-bold mb-3">
-            Current Lease
-        </h5>
+        <h5 class="fw-bold mb-3">Quick Actions</h5>
 
-        @if (tenancy != null)
-        {
-            <div class="row">
+        <div class="row g-3">
 
-                <div class="col-md-6">
-                    <strong>Property</strong><br />
-                    @tenancy.Unit.Property.Name
-                </div>
-
-                <div class="col-md-6">
-                    <strong>Unit</strong><br />
-                    @tenancy.Unit.UnitNumber
-                </div>
-
-                <div class="col-md-6 mt-3">
-                    <strong>Lease Start</strong><br />
-                    @tenancy.StartDate.ToString("dd MMM yyyy")
-                </div>
-
-                <div class="col-md-6 mt-3">
-                    <strong>Lease End</strong><br />
-                    @tenancy.EndDate.ToString("dd MMM yyyy")
-                </div>
-
+            <div class="col-md-4">
+                <a asp-action="BrowseUnits" class="btn btn-outline-primary w-100">
+                    Browse Units
+                </a>
             </div>
-        }
-        else
-        {
-            <div class="alert alert-info mb-0">
-                You don't currently have an active tenancy.
+
+            <div class="col-md-4">
+                <a asp-action="MyApplications" class="btn btn-outline-secondary w-100">
+                    My Applications (@Model.PendingApplicationsCount)
+                </a>
             </div>
-        }
+
+            <div class="col-md-4">
+                <a asp-action="Maintenance" class="btn btn-outline-warning w-100">
+                    Maintenance (@Model.ActiveMaintenanceCount)
+                </a>
+            </div>
+
+        </div>
 
     </div>
 </div>
 
-<a asp-action="BrowseUnits" asp-controller="Tenant" 
-   class="btn btn-primary">
-    Browse Available Units
-</a>
+<div class="row g-3 mb-4">
 
-<a asp-action="MyApplications" asp-controller="Tenant" 
-   class="btn btn-primary">
-    My Applications
-</a>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Applications</h6>
+            <h3>@Model.ApplicationCount</h3>
+        </div>
+    </div>
 
-<a asp-action="MaintenanceView" asp-controller="Tenant" 
-   class="btn btn-primary">
-    View Maintenance
-</a>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Pending</h6>
+            <h3>@Model.PendingApplicationsCount</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Maintenance</h6>
+            <h3>@Model.ActiveMaintenanceCount</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Outstanding</h6>
+            <h3>RM @Model.OutstandingPayments</h3>
+        </div>
+    </div>
+
+</div>
