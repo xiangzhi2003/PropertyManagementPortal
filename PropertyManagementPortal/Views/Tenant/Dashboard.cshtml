@@ -1,8 +1,11 @@
+@model PropertyManagementPortal.ViewModels.Tenant.TenantDashboardViewModel
+
 @{
     ViewData["Title"] = "Dashboard";
-    var user = ViewBag.User as PropertyManagementPortal.Models.ApplicationUser;
-    var pendingRequest = ViewBag.PendingRequest as PropertyManagementPortal.Models.RoleRequest;
-    var rejectedRequest = ViewBag.RejectedRequest as PropertyManagementPortal.Models.RoleRequest;
+    var user = Model.User;
+    var pendingRequest = Model.PendingRequest;
+    var rejectedRequest = Model.RejectedRequest;
+    var tenancy = Model.CurrentTenancy;
 }
 
 <div class="d-flex align-items-center gap-3 mb-4">
@@ -112,13 +115,45 @@ else if (rejectedRequest != null)
 }
 
 <!-- Tenant features placeholder -->
-<div class="card">
-    <div class="card-body p-4 text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16" class="mb-3">
-            <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
-        </svg>
-        <h6 class="fw-semibold text-muted">Tenant features coming soon</h6>
-        <p class="text-muted mb-3" style="font-size:.9rem;">View your tenancy, submit maintenance requests, and track payments.</p>
-        <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-primary btn-sm px-4">Go to My Profile</a>
+<div class="card mb-4">
+    <div class="card-body">
+
+        <h5 class="fw-bold mb-3">
+            Current Lease
+        </h5>
+
+        @if (tenancy != null)
+        {
+            <div class="row">
+
+                <div class="col-md-6">
+                    <strong>Property</strong><br />
+                    @tenancy.Unit.Property.Name
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Unit</strong><br />
+                    @tenancy.Unit.UnitNumber
+                </div>
+
+                <div class="col-md-6 mt-3">
+                    <strong>Lease Start</strong><br />
+                    @tenancy.StartDate.ToString("dd MMM yyyy")
+                </div>
+
+                <div class="col-md-6 mt-3">
+                    <strong>Lease End</strong><br />
+                    @tenancy.EndDate.ToString("dd MMM yyyy")
+                </div>
+
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                You don't currently have an active tenancy.
+            </div>
+        }
+
     </div>
 </div>
