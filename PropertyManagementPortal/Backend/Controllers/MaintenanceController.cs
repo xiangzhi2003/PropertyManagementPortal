@@ -58,7 +58,7 @@ namespace PropertyManagementPortal.Controllers
                 })
                 .FirstOrDefaultAsync();
 
-            var vm = new MaintenanceDashboardViewModel
+            var vm = new DashboardViewModel
             {
                 StaffName = user!.FullName,
                 AssignedCount = assignedCount,
@@ -82,12 +82,51 @@ namespace PropertyManagementPortal.Controllers
             return View(vm);
         }
 
-        
-
-        // ── ASSIGNED JOBS (placeholder — full list built next) ────────────────
-        public IActionResult Jobs()
+        // ── ASSIGNED JOBS ─────────────────────────────────────────────────────
+        public async Task<IActionResult> Jobs(string? status = null)
         {
-            return View();
+            var userId = _userManager.GetUserId(User);
+            var user = await _userManager.GetUserAsync(User);
+
+            // Only this staff member's jobs. Filtering happens in the query (SQL),
+            // so unrelated rows never leave the database.
+            var query = _db.MaintenanceRequests.Where(r => r.AssignedStaffId == userId);
+
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(r => r.Status == status);
+
+            var jobs = await query
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new JobRowViewModel
+                {
+                    RequestId = r.RequestId,
+                    UnitNumber = r.Unit.UnitNumber,
+                    PropertyName = r.Unit.Property.Name,
+                    Category = r.Category,
+                    Description = r.Description,
+                    TenantName = r.Tenant.FullName,
+                    Status = r.Status,
+                    Priority = r.Priority ?? "",
+                    CreatedAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            // Order: active work first (Assigned, InProgress), Completed last;
+            // newest within each group. Done in memory on the small result set.
+            jobs = jobs
+                .OrderBy(j => j.Status == "Assigned" ? 0
+                            : j.Status == "InProgress" ? 1 : 2)
+                .ThenByDescending(j => j.CreatedAt)
+                .ToList();
+
+            var vm = new JobsViewModel
+            {
+                StaffName = user!.FullName,
+                Jobs = jobs,
+                StatusFilter = status
+            };
+
+            return View(vm);
         }
 
         // ── NOTIFICATIONS (placeholder — full list built next) ────────────────

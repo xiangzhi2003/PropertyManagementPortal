@@ -1,16 +1,107 @@
+@using PropertyManagementPortal.ViewModels.Maintenance
+@model JobsViewModel
 @{ ViewData["Title"] = "Assigned Jobs"; }
 
-<div class="page-header mb-4">
-    <h3>Assigned Jobs</h3>
-    <p>The jobs assigned to you, with status filters.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Assigned Jobs</h4>
+        <span class="text-muted small">Maintenance requests assigned to you</span>
+    </div>
+    <span class="badge bg-secondary" style="font-size:.85rem;">@Model.Jobs.Count shown</span>
+</div>
+
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Jobs" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All statuses</option>
+                    @foreach (var s in new[] { "Assigned", "InProgress", "Completed" })
+                    {
+                        <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-outline-primary flex-grow-1">Filter</button>
+                <a asp-action="Jobs" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card">
-    <div class="card-body p-4 text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16" class="mb-3">
-            <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3q0-.405-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814z"/>
-        </svg>
-        <h5 class="fw-semibold text-muted mb-2">Assigned Jobs list coming next</h5>
-        <p class="text-muted mb-0" style="font-size:.9rem;">This page will list your assigned jobs with unit, property, issue, status, and a status filter.</p>
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="background:#f8fafc;">
+                <tr>
+                    <th class="ps-3">Request</th>
+                    <th>Property / Unit</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Jobs.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">No jobs found for this filter.</td></tr>
+                }
+                else
+                {
+                    @foreach (var j in Model.Jobs)
+                    {
+                        var (sbg, sfg) = j.Status switch
+                        {
+                            "Completed" => ("#dcfce7", "#16a34a"),
+                            "InProgress" => ("#ede9fe", "#7c3aed"),
+                            "Assigned" => ("#dbeafe", "#2563eb"),
+                            _ => ("#fef3c7", "#d97706")
+                        };
+                        <tr>
+                            <td class="ps-3" style="max-width:300px;">
+                                <div class="fw-semibold">@j.Category</div>
+                                <div class="text-muted text-truncate" style="font-size:.8rem;max-width:300px;">@j.Description</div>
+                                <div class="text-muted" style="font-size:.72rem;">by @j.TenantName &middot; @j.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@j.PropertyName</div>
+                                <div class="text-muted" style="font-size:.8rem;">Unit @j.UnitNumber</div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(j.Priority))
+                                {
+                                    var (pbg, pfg) = j.Priority switch
+                                    {
+                                        "High" => ("#fee2e2", "#dc2626"),
+                                        "Medium" => ("#fef3c7", "#d97706"),
+                                        _ => ("#f3f4f6", "#6b7280")
+                                    };
+                                    <span class="badge" style="background:@pbg;color:@pfg;">@j.Priority</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">&mdash;</span>
+                                }
+                            </td>
+                            <td><span class="badge" style="background:@sbg;color:@sfg;">@j.Status</span></td>
+                            <td class="text-end pe-3">
+                                @if (j.Status != "Completed")
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary" disabled
+                                            title="Status updates are coming next">Update Status</button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Done</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
 </div>
