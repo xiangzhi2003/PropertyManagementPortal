@@ -1,0 +1,172 @@
+@using PropertyManagementPortal.ViewModels.Manager
+@model MaintenanceListViewModel
+@{ ViewData["Title"] = "Maintenance"; }
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Maintenance Tasks</h4>
+        <span class="text-muted small">Assign submitted requests to your maintenance staff</span>
+    </div>
+    @if (Model.UnassignedCount > 0)
+    {
+        <span class="badge bg-warning text-dark" style="font-size:.85rem;">@Model.UnassignedCount unassigned</span>
+    }
+</div>
+
+@if (!Model.StaffOptions.Any())
+{
+    <div class="alert alert-warning">
+        There are no active maintenance staff to assign requests to yet. Ask an administrator to add or activate a Maintenance Staff account.
+    </div>
+}
+
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Maintenance" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Property</label>
+                <select name="propertyId" class="form-select form-select-sm" asp-items="Model.PropertyOptions">
+                    <option value="">All properties</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All statuses</option>
+                    @foreach (var s in new[] { "Submitted", "Assigned", "InProgress", "Completed" })
+                    {
+                        <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-outline-primary flex-grow-1">Filter</button>
+                <a asp-action="Maintenance" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="background:#f8fafc;">
+                <tr>
+                    <th class="ps-3">Request</th>
+                    <th>Property / Unit</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned To</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Requests.Any())
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">No maintenance requests found.</td></tr>
+                }
+                else
+                {
+                    @foreach (var r in Model.Requests)
+                    {
+                        var (sbg, sfg) = r.Status switch
+                        {
+                            "Completed" => ("#dcfce7", "#16a34a"),
+                            "InProgress" => ("#ede9fe", "#7c3aed"),
+                            "Assigned" => ("#dbeafe", "#2563eb"),
+                            _ => ("#fef3c7", "#d97706")
+                        };
+                        <tr>
+                            <td class="ps-3" style="max-width:280px;">
+                                <div class="fw-semibold">@r.Category</div>
+                                <div class="text-muted" style="font-size:.8rem;">@r.Description</div>
+                                <div class="text-muted" style="font-size:.72rem;">by @r.TenantName &middot; @r.CreatedAt.ToString("dd MMM yyyy")</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@r.PropertyName</div>
+                                <div class="text-muted" style="font-size:.8rem;">Unit @r.UnitNumber</div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(r.Priority))
+                                {
+                                    var (pbg, pfg) = r.Priority switch
+                                    {
+                                        "High" => ("#fee2e2", "#dc2626"),
+                                        "Medium" => ("#fef3c7", "#d97706"),
+                                        _ => ("#f3f4f6", "#6b7280")
+                                    };
+                                    <span class="badge" style="background:@pbg;color:@pfg;">@r.Priority</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">&mdash;</span>
+                                }
+                            </td>
+                            <td><span class="badge" style="background:@sbg;color:@sfg;">@r.Status</span></td>
+                            <td class="small">@(string.IsNullOrWhiteSpace(r.AssignedStaffName) ? "—" : r.AssignedStaffName)</td>
+                            <td class="text-end pe-3">
+                                @if (r.Status != "Completed" && Model.StaffOptions.Any())
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal" data-bs-target="#assignModal-@r.RequestId">
+                                        @(r.Status == "Submitted" ? "Assign" : "Reassign")
+                                    </button>
+
+                                    <!-- Assign modal -->
+                                    <div class="modal fade" id="assignModal-@r.RequestId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content text-start">
+                                                <form method="post" asp-action="AssignRequest">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@r.RequestId" />
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Assign Maintenance Task</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p class="small text-muted mb-3">
+                                                            <strong>@r.Category</strong> — @r.PropertyName, Unit @r.UnitNumber
+                                                        </p>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Assign to</label>
+                                                            <select name="staffId" class="form-select" asp-items="Model.StaffOptions" required>
+                                                                <option value="">Select staff</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Priority</label>
+                                                            <select name="priority" class="form-select" required>
+                                                                @foreach (var pr in MaintenanceListViewModel.Priorities)
+                                                                {
+                                                                    <option value="@pr" selected="@(r.Priority == pr)">@pr</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-1">
+                                                            <label class="form-label">Notes <span class="text-muted small">(optional)</span></label>
+                                                            <textarea name="notes" class="form-control" rows="3" maxlength="1000"
+                                                                      placeholder="Instructions for the staff...">@r.AssignmentNotes</textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-primary">Assign Task</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
