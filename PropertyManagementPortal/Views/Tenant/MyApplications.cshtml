@@ -1,0 +1,58 @@
+@model List<PropertyManagementPortal.Models.Tenancy>
+
+@{
+    ViewData["Title"] = "My Applications";
+}
+
+<h4 class="fw-bold mb-3">My Applications</h4>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        You have not applied for any units yet.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Unit</th>
+                        <th>Applied Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var app in Model)
+                    {
+                        <tr>
+                            <td>@app.Unit.Property.Name</td>
+                            <td>@app.Unit.UnitNumber</td>
+
+                            <td>
+                                @if (app.Status == "Pending")
+                                {
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                }
+                                else if (app.Status == "Approved")
+                                {
+                                    <span class="badge bg-success">Approved</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Rejected</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+}

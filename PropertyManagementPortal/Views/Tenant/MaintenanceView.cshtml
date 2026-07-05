@@ -1,0 +1,27 @@
+@model PropertyManagementPortal.Models.MaintenanceRequest
+
+<h4 class="fw-bold mb-3">Maintenance Request</h4>
+
+<form method="post">
+
+    <div class="mb-3">
+        <label>Category</label>
+        <select asp-for="Category" class="form-control">
+            <option>Electrical</option>
+            <option>Plumbing</option>
+            <option>Cleaning</option>
+            <option>Furniture</option>
+            <option>Other</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Description</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <button class="btn btn-primary">
+        Submit
+    </button>
+
+</form>
