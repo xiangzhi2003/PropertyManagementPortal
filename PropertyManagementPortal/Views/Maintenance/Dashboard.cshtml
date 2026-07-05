@@ -1,25 +1,155 @@
-@{
-    ViewData["Title"] = "Dashboard";
-    var user = ViewBag.User as PropertyManagementPortal.Models.ApplicationUser;
-}
+@model PropertyManagementPortal.ViewModels.Maintenance.MaintenanceDashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
 
+<!-- Welcome header -->
 <div class="d-flex align-items-center gap-3 mb-4">
     <div style="width:52px;height:52px;background:#fef3c7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#d97706;flex-shrink:0;">
-        @(user?.FullName?.FirstOrDefault() ?? '?')
+        @(Model.StaffName?.FirstOrDefault() ?? '?')
     </div>
     <div>
-        <h4 class="fw-bold mb-0">Welcome, @user?.FullName</h4>
+        <h4 class="fw-bold mb-0">Welcome, @Model.StaffName</h4>
         <span class="badge" style="background:#fef3c7;color:#92400e;">Maintenance Staff</span>
     </div>
 </div>
 
+@if (Model.ActiveCount == 0 && Model.CompletedCount == 0)
+{
+    <div class="alert alert-info">
+        No jobs have been assigned to you yet. Once a property manager assigns you a maintenance request, it will appear here.
+    </div>
+}
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <!-- Assigned (not started) -->
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Jobs" asp-route-status="Assigned" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #d97706;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Assigned</p>
+                        <div class="stat-number" style="color:#d97706;">@Model.AssignedCount</div>
+                        <p class="stat-sub">Awaiting your start</p>
+                    </div>
+                    <div class="stat-icon" style="background:#fef3c7;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#d97706" viewBox="0 0 16 16">
+                            <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m1.679-4.493-1.335 2.226a.75.75 0 0 1-1.174.144l-.774-.773a.5.5 0 0 1 .708-.708l.547.548 1.17-1.951a.5.5 0 1 1 .858.514ZM11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/>
+                            <path d="M8.256 14a4.5 4.5 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10q.39 0 .74.025c.226-.341.496-.65.804-.918Q8.844 9.002 8 9c-5 0-6 3-6 4s1 1 1 1z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- In progress -->
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Jobs" asp-route-status="InProgress" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #2563eb;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">In Progress</p>
+                        <div class="stat-number" style="color:#2563eb;">@Model.InProgressCount</div>
+                        <p class="stat-sub">Currently being worked on</p>
+                    </div>
+                    <div class="stat-icon" style="background:#dbeafe;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#2563eb" viewBox="0 0 16 16">
+                            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Completed this month -->
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Jobs" asp-route-status="Completed" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #16a34a;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Completed This Month</p>
+                        <div class="stat-number" style="color:#16a34a;">@Model.CompletedThisMonth</div>
+                        <p class="stat-sub">@Model.CompletedCount completed all-time</p>
+                    </div>
+                    <div class="stat-icon" style="background:#dcfce7;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#16a34a" viewBox="0 0 16 16">
+                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Active total -->
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Jobs" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #7c3aed;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label">Active Jobs</p>
+                        <div class="stat-number" style="color:#7c3aed;">@Model.ActiveCount</div>
+                        <p class="stat-sub">Assigned &amp; in progress</p>
+                    </div>
+                    <div class="stat-icon" style="background:#ede9fe;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#7c3aed" viewBox="0 0 16 16">
+                            <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3q0-.405-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Latest job -->
 <div class="card">
-    <div class="card-body p-4 text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16" class="mb-3">
-            <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3q0-.405-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814z"/>
-        </svg>
-        <h5 class="fw-semibold text-muted mb-2">Maintenance Staff Dashboard</h5>
-        <p class="text-muted mb-3" style="font-size:.9rem;">Your dashboard is being built. Check back soon — you'll be able to view assigned jobs, update statuses, and upload repair evidence here.</p>
-        <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-primary btn-sm px-4">Go to My Profile</a>
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="section-heading mb-0">Latest Assigned Job</h6>
+            <a asp-action="Jobs" class="btn btn-sm btn-outline-primary">View All Jobs</a>
+        </div>
+        @if (Model.HasLatestJob)
+        {
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="fw-semibold" style="font-size:1rem;">
+                        @Model.LatestCategory &mdash; Unit @Model.LatestUnitNumber
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:.88rem;">
+                        @Model.LatestPropertyName
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:.8rem;">
+                        Assigned @Model.LatestCreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                    </div>
+                </div>
+                <div class="text-end">
+                    @{
+                        var statusStyle = Model.LatestStatus == "InProgress"
+                            ? "background:#dbeafe;color:#1d4ed8;"
+                            : "background:#fef3c7;color:#92400e;";
+                    }
+                    <span class="badge" style="@statusStyle">@Model.LatestStatus</span>
+                    @if (!string.IsNullOrEmpty(Model.LatestPriority))
+                    {
+                        var prioStyle = Model.LatestPriority == "High"
+                            ? "background:#fee2e2;color:#b91c1c;"
+                            : Model.LatestPriority == "Medium"
+                                ? "background:#fef3c7;color:#92400e;"
+                                : "background:#e5e7eb;color:#374151;";
+                        <span class="badge ms-1" style="@prioStyle">@Model.LatestPriority priority</span>
+                    }
+                    <div class="mt-2">
+                        <a asp-action="Jobs" class="btn btn-sm btn-primary">Open</a>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-0 py-3 text-center">No open jobs right now. New assignments will show up here.</p>
+        }
     </div>
 </div>
