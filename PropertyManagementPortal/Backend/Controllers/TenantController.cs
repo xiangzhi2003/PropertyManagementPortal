@@ -107,6 +107,8 @@ namespace PropertyManagementPortal.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
+            if (user == null) return Challenge();
+
             // prevent duplicate application
             var existing = await _db.UnitApplications
                 .AnyAsync(a => a.UnitId == unitId && a.TenantId == user.Id && a.Status == "Pending");
@@ -121,7 +123,8 @@ namespace PropertyManagementPortal.Controllers
             {
                 UnitId = unitId,
                 TenantId = user.Id,
-                Status = "Pending"
+                Status = "Pending",
+                AppliedAt = DateTime.UtcNow
             };
 
             _db.UnitApplications.Add(application);

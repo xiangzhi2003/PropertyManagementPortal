@@ -1,0 +1,56 @@
+@model List<PropertyManagementPortal.Models.Unit>
+
+@{
+    ViewData["Title"] = "Browse Units";
+}
+
+<h4 class="fw-bold mb-3">Vacant Units</h4>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No vacant units available at the moment.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var unit in Model)
+        {
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+
+                        <h5 class="fw-bold">
+                            @unit.UnitNumber
+                        </h5>
+
+                        <p class="text-muted mb-1">
+                            @unit.Property.Name
+                        </p>
+
+                        <p class="mb-1">
+                            Type: @unit.Type
+                        </p>
+
+                        <p class="mb-1">
+                            Floor: @unit.Floor
+                        </p>
+
+                        <p class="fw-bold text-primary">
+                            RM @unit.RentAmount
+                        </p>
+
+                        <form asp-action="Apply" method="post">
+                            <input type="hidden" name="unitId" value="@unit.UnitId" />
+                            <button class="btn btn-primary btn-sm w-100">
+                                Apply
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
