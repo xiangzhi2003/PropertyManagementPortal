@@ -433,5 +433,115 @@ namespace PropertyManagementPortal.Controllers
             TempData["Success"] = "Payment marked as received.";
             return RedirectToAction(nameof(Payments));
         }
+ 
+        // ── ASSIGN MAINTENANCE TASKS ─────────────────────────────────────────
+ 
+        public async Task<IActionResult> Maintenance(string? status, int? propertyId)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var query = _db.MaintenanceRequests.Where(m => propertyIds.Contains(m.Unit.PropertyId));
+ 
+            if (propertyId.HasValue)
+                query = query.Where(m => m.Unit.PropertyId == propertyId.Value);
+ 
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(m => m.Status == status);
+ 
+            var rows = await query
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new MaintenanceRowViewModel
+                {
+                    RequestId = m.RequestId,
+                    TenantName = m.Tenant.FullName,
+                    PropertyName = m.Unit.Property.Name,
+                    UnitNumber = m.Unit.UnitNumber,
+                    Category = m.Category,
+                    Description = m.Description,
+                    Status = m.Status,
+                    CreatedAt = m.CreatedAt,
+                    AssignedStaffName = m.AssignedStaff != null ? m.AssignedStaff.FullName : null,
+                    Priority = m.Priority,
+                    AssignmentNotes = m.AssignmentNotes
+                })
+                .ToListAsync();
+ 
+            // Order: Submitted first (needs action), then Assigned, InProgress, Completed.
+            rows = rows
+                .OrderBy(r => r.Status == "Submitted" ? 0
+                            : r.Status == "Assigned" ? 1
+                            : r.Status == "InProgress" ? 2 : 3)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList();
+ 
+            // Active maintenance staff available for assignment (not property-scoped —
+            // staff are a shared pool, not tied to a property).
+            var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
+            var staffOptions = staff
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.FullName)
+                .Select(s => new SelectListItem { Value = s.Id, Text = s.FullName })
+                .ToList();
+ 
+            var unassignedCount = await _db.MaintenanceRequests
+                .CountAsync(m => propertyIds.Contains(m.Unit.PropertyId) && m.AssignedStaffId == null);
+ 
+            var vm = new MaintenanceListViewModel
+            {
+                Requests = rows,
+                StatusFilter = status,
+                PropertyFilter = propertyId,
+                PropertyOptions = await GetPropertyOptionsAsync(),
+                StaffOptions = staffOptions,
+                UnassignedCount = unassignedCount
+            };
+ 
+            return View(vm);
+        }
+ 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignRequest(int id, string staffId, string priority, string? notes)
+        {
+            var propertyIds = await GetManagedPropertyIdsAsync();
+ 
+            var request = await _db.MaintenanceRequests
+                .FirstOrDefaultAsync(m => m.RequestId == id && propertyIds.Contains(m.Unit.PropertyId));
+ 
+            if (request == null)
+            {
+                TempData["Error"] = "Request not found or not in your properties.";
+                return RedirectToAction(nameof(Maintenance));
+            }
+ 
+            if (request.Status == "Completed")
+            {
+                TempData["Error"] = "This request is already completed and cannot be reassigned.";
+                return RedirectToAction(nameof(Maintenance));
+            }
+ 
+            // Validate the chosen staff member really is active maintenance staff.
+            var staff = await _userManager.FindByIdAsync(staffId);
+            if (staff == null || !staff.IsActive || !await _userManager.IsInRoleAsync(staff, "MaintenanceStaff"))
+            {
+                TempData["Error"] = "Please select a valid maintenance staff member.";
+                return RedirectToAction(nameof(Maintenance));
+            }
+ 
+            if (!MaintenanceListViewModel.Priorities.Contains(priority))
+            {
+                TempData["Error"] = "Please select a valid priority.";
+                return RedirectToAction(nameof(Maintenance));
+            }
+ 
+            request.AssignedStaffId = staff.Id;
+            request.Status = "Assigned";
+            request.Priority = priority;
+            request.AssignmentNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            await _db.SaveChangesAsync();
+ 
+            TempData["Success"] = $"Request assigned to {staff.FullName} ({priority} priority).";
+            return RedirectToAction(nameof(Maintenance));
+        }
     }
 }
