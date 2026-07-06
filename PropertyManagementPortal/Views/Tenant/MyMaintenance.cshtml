@@ -4,58 +4,95 @@
     ViewData["Title"] = "My Maintenance Requests";
 }
 
-<h4 class="fw-bold mb-3">My Maintenance Requests</h4>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">My Maintenance Requests</h4>
+
+    <!-- Open submit modal -->
+    <button class="btn btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#createModal">
+        + Submit Request
+    </button>
+</div>
+
 
 @if (!Model.Any())
 {
     <div class="alert alert-info">
-        No maintenance requests found.
+        No maintenance requests yet.
     </div>
 }
 else
 {
     <div class="card">
-        <div class="card-body">
+        <div class="card-body p-0">
 
-            <table class="table table-hover">
+            <table class="table table-hover mb-0 align-middle">
 
-                <thead>
+                <thead class="table-light">
                     <tr>
+                        <th>Property</th>
+                        <th>Unit</th>
                         <th>Category</th>
                         <th>Description</th>
-                        <th>Date</th>
                         <th>Status</th>
+                        <th>Date</th>
                     </tr>
                 </thead>
 
-                <tbody>
-                    @foreach (var req in Model)
-                    {
-                        <tr>
-                            <td>@req.Category</td>
-                            <td>@req.Description</td>
-                            <td>@req.CreatedAt.ToString("dd MMM yyyy")</td>
 
-                            <td>
-                                @if (req.Status == "Submitted")
-                                {
-                                    <span class="badge bg-warning text-dark">Submitted</span>
-                                }
-                                else if (req.Status == "Assigned")
-                                {
-                                    <span class="badge bg-primary">Assigned</span>
-                                }
-                                else if (req.Status == "InProgress")
-                                {
-                                    <span class="badge bg-info">In Progress</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">Completed</span>
-                                }
-                            </td>
-                        </tr>
-                    }
+                <tbody>
+                @foreach(var r in Model)
+                {
+                    <tr>
+                        <td>@r.Unit.Property.Name</td>
+
+                        <td>
+                            Unit @r.Unit.UnitNumber
+                        </td>
+
+                        <td>
+                            @r.Category
+                        </td>
+
+                        <td>
+                            @r.Description
+                        </td>
+
+                        <td>
+                            @if(r.Status == "Pending")
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    Pending
+                                </span>
+                            }
+                            else if(r.Status == "Submitted")
+                            {
+                                <span class="badge bg-primary">
+                                    Submitted
+                                </span>
+                            }
+                            else if(r.Status == "InProgress")
+                            {
+                                <span class="badge bg-primary">
+                                    In Progress
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">
+                                    Completed
+                                </span>
+                            }
+                        </td>
+
+                        <td>
+                            @r.CreatedAt.ToString("dd MMM yyyy")
+                        </td>
+
+                    </tr>
+                }
+
                 </tbody>
 
             </table>
@@ -63,3 +100,135 @@ else
         </div>
     </div>
 }
+
+
+
+<!-- ========================= -->
+<!-- Submit Maintenance Modal -->
+<!-- Put it HERE -->
+<!-- ========================= -->
+
+<div class="modal fade" id="createModal" tabindex="-1">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+
+            <form asp-action="Maintenance" method="post">
+
+                @Html.AntiForgeryToken()
+
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Submit Maintenance Request
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+
+
+                <div class="modal-body">
+
+
+                    <label class="form-label">
+                        Unit
+                    </label>
+
+                    <select name="UnitId"
+                            class="form-select"
+                            required>
+
+                        @foreach(var item in ViewBag.Units)
+                        {
+                            <option value="@item.UnitId">
+                                @item.Property.Name -
+                                Unit @item.UnitNumber
+                            </option>
+                        }
+
+                    </select>
+
+
+
+                    <label class="form-label mt-3">
+                        Category
+                    </label>
+
+                    <select name="Category"
+                            class="form-select"
+                            required>
+
+                        <option value="">
+                            -- Select Category --
+                        </option>
+
+                        <option>
+                            Electrical
+                        </option>
+
+                        <option>
+                            Plumbing
+                        </option>
+
+                        <option>
+                            Cleaning
+                        </option>
+
+                        <option>
+                            Furniture
+                        </option>
+
+                        <option>
+                            Other
+                        </option>
+
+                    </select>
+
+
+
+                    <label class="form-label mt-3">
+                        Description
+                    </label>
+
+                    <textarea name="Description"
+                              class="form-control"
+                              rows="4"
+                              required></textarea>
+
+
+                </div>
+
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+
+                    <button class="btn btn-primary">
+                        Submit
+                    </button>
+
+                </div>
+
+
+            </form>
+
+
+        </div>
+
+    </div>
+
+</div>

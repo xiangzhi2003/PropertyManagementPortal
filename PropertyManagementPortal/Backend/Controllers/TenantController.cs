@@ -267,9 +267,21 @@ namespace PropertyManagementPortal.Controllers
             var user = await _userManager.GetUserAsync(User);
 
             var requests = await _db.MaintenanceRequests
+                .Include(m => m.Unit)
+                .ThenInclude(u => u.Property)
                 .Where(m => m.TenantId == user.Id)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+
+
+            ViewBag.Units = await _db.Tenancies
+                .Include(t => t.Unit)
+                .ThenInclude(u => u.Property)
+                .Where(t => t.TenantId == user.Id 
+                        && t.Status == "Approved")
+                .Select(t => t.Unit)
+                .ToListAsync();
+
 
             return View(requests);
         }
