@@ -129,6 +129,46 @@ namespace PropertyManagementPortal.Controllers
             return View(vm);
         }
 
+        // ── JOB DETAILS ─────────────────────────────────────────────────────
+        public async Task<IActionResult> JobDetails(int id)
+        {
+            var userId = _userManager.GetUserId(User);
+            var user = await _userManager.GetUserAsync(User);
+
+            var vm = await _db.MaintenanceRequests
+                .Where(r => r.RequestId == id && r.AssignedStaffId == userId)   // ownership guard
+                .Select(r => new JobDetailsViewModel
+                {
+                    RequestId = r.RequestId,
+                    Category = r.Category,
+                    Description = r.Description,
+                    PhotoUrl = r.PhotoUrl,
+                    Status = r.Status,
+                    Priority = r.Priority,
+                    AssignmentNotes = r.AssignmentNotes,
+                    CreatedAt = r.CreatedAt,
+                    TenantName = r.Tenant.FullName,
+                    TenantPhone = r.Tenant.PhoneNumber,
+                    PropertyName = r.Unit.Property.Name,
+                    UnitNumber = r.Unit.UnitNumber,
+                    Updates = r.Updates
+                        .OrderByDescending(u => u.UpdatedAt)
+                        .Select(u => new UpdateRowViewModel
+                        {
+                            StatusUpdate = u.StatusUpdate,
+                            Notes = u.Notes,
+                            EvidencePhotoUrl = u.EvidencePhotoUrl,
+                            StaffName = u.Staff.FullName,
+                            UpdatedAt = u.UpdatedAt
+                        }).ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            if (vm == null) return NotFound();
+
+            return View(vm);
+        }
+
         // ── NOTIFICATIONS (placeholder — full list built next) ────────────────
         public IActionResult Notifications()
         {

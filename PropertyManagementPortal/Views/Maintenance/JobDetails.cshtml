@@ -1,0 +1,135 @@
+@using PropertyManagementPortal.ViewModels.Maintenance
+@model JobDetailsViewModel
+@{
+    ViewData["Title"] = "Job Details";
+    var (sbg, sfg) = Model.Status switch
+    {
+        "Completed" => ("#dcfce7", "#16a34a"),
+        "InProgress" => ("#ede9fe", "#7c3aed"),
+        "Assigned" => ("#dbeafe", "#2563eb"),
+        _ => ("#fef3c7", "#d97706")
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">@Model.Category &mdash; Unit @Model.UnitNumber</h4>
+        <span class="text-muted small">@Model.PropertyName</span>
+    </div>
+    <a asp-action="Jobs" class="btn btn-sm btn-outline-secondary">&larr; Back to Jobs</a>
+</div>
+
+<div class="row g-4">
+    <!-- Left: issue details -->
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h6 class="section-heading mb-0">Issue Details</h6>
+                    <div>
+                        <span class="badge" style="background:@sbg;color:@sfg;">@Model.Status</span>
+                        @if (!string.IsNullOrWhiteSpace(Model.Priority))
+                        {
+                            var (pbg, pfg) = Model.Priority switch
+                            {
+                                "High" => ("#fee2e2", "#dc2626"),
+                                "Medium" => ("#fef3c7", "#d97706"),
+                                _ => ("#f3f4f6", "#6b7280")
+                            };
+                            <span class="badge ms-1" style="background:@pbg;color:@pfg;">@Model.Priority priority</span>
+                        }
+                    </div>
+                </div>
+
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-3 text-muted fw-normal">Category</dt>
+                    <dd class="col-sm-9">@Model.Category</dd>
+
+                    <dt class="col-sm-3 text-muted fw-normal">Description</dt>
+                    <dd class="col-sm-9">@Model.Description</dd>
+
+                    <dt class="col-sm-3 text-muted fw-normal">Reported by</dt>
+                    <dd class="col-sm-9">
+                        @Model.TenantName
+                        @if (!string.IsNullOrWhiteSpace(Model.TenantPhone))
+                        {
+                            <span class="text-muted">&middot; @Model.TenantPhone</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3 text-muted fw-normal">Reported on</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</dd>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.AssignmentNotes))
+                    {
+                        <dt class="col-sm-3 text-muted fw-normal">Manager's note</dt>
+                        <dd class="col-sm-9">@Model.AssignmentNotes</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <!-- Tenant's photo -->
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-3">Reported Photo</h6>
+                @if (!string.IsNullOrWhiteSpace(Model.PhotoUrl))
+                {
+                    <img src="@Model.PhotoUrl" alt="Reported issue" class="img-fluid rounded border" style="max-height:340px;" />
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">No photo was attached to this request.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: status timeline -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="section-heading mb-0">Status History</h6>
+                    @if (Model.Status != "Completed")
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" disabled
+                                title="Status updates are coming next">Update Status</button>
+                    }
+                </div>
+
+                @if (!Model.Updates.Any())
+                {
+                    <p class="text-muted small mb-0">No updates yet. When you start work, your updates will appear here.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var u in Model.Updates)
+                        {
+                            <div class="d-flex gap-3 align-items-start">
+                                <div class="activity-dot mt-2"></div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold" style="font-size:.9rem;">@u.StatusUpdate</div>
+                                    @if (!string.IsNullOrWhiteSpace(u.Notes))
+                                    {
+                                        <div class="text-muted" style="font-size:.85rem;">@u.Notes</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(u.EvidencePhotoUrl))
+                                    {
+                                        <a href="@u.EvidencePhotoUrl" target="_blank" class="d-inline-block mt-2">
+                                            <img src="@u.EvidencePhotoUrl" alt="Evidence" class="rounded border" style="max-height:120px;" />
+                                        </a>
+                                    }
+                                    <div class="text-muted mt-1" style="font-size:.75rem;">
+                                        @u.StaffName &middot; @u.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

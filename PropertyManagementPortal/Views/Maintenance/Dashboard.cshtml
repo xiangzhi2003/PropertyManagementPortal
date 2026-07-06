@@ -142,7 +142,7 @@
                         <span class="badge ms-1" style="@prioStyle">@Model.LatestPriority priority</span>
                     }
                     <div class="mt-2">
-                        <a asp-action="Jobs" class="btn btn-sm btn-primary">Open</a>
+                        <a asp-action="JobDetails" asp-route-id="@Model.LatestJobId" class="btn btn-sm btn-primary">Open</a>
                     </div>
                 </div>
             </div>

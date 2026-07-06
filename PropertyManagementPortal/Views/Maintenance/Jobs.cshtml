@@ -88,15 +88,7 @@
                             </td>
                             <td><span class="badge" style="background:@sbg;color:@sfg;">@j.Status</span></td>
                             <td class="text-end pe-3">
-                                @if (j.Status != "Completed")
-                                {
-                                    <button type="button" class="btn btn-sm btn-outline-primary" disabled
-                                            title="Status updates are coming next">Update Status</button>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">Done</span>
-                                }
+                                <a asp-action="JobDetails" asp-route-id="@j.RequestId" class="btn btn-sm btn-outline-primary">View</a>
                             </td>
                         </tr>
                     }
