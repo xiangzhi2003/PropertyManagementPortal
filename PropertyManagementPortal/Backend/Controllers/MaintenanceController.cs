@@ -9,15 +9,11 @@ using PropertyManagementPortal.ViewModels.Maintenance;
 namespace PropertyManagementPortal.Controllers
 {
     [Authorize(Roles = "MaintenanceStaff")]
-    public class MaintenanceController : Controller
+    public class MaintenanceController : AppControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<ApplicationUser> _userManager;
-
         public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+            : base(db, userManager)
         {
-            _db = db;
-            _userManager = userManager;
         }
 
         // ── DASHBOARD ────────────────────────────────────────────────────────
@@ -169,10 +165,6 @@ namespace PropertyManagementPortal.Controllers
             return View(vm);
         }
 
-        // ── NOTIFICATIONS (placeholder — full list built next) ────────────────
-        public IActionResult Notifications()
-        {
-            return View();
-        }
+        // Notifications + MarkRead are inherited from AppControllerBase.
     }
 }
