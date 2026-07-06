@@ -41,7 +41,7 @@ else
                             RM @unit.RentAmount
                         </p>
 
-                        <form asp-action="Apply" method="post">
+                        <form asp-action="Apply" method="get">
                             <input type="hidden" name="unitId" value="@unit.UnitId" />
                             <button class="btn btn-primary btn-sm w-100">
                                 Apply

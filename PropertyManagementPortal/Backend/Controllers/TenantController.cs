@@ -105,36 +105,75 @@ namespace PropertyManagementPortal.Controllers
             return View(units);
         }
 
+        public async Task<IActionResult> Apply(int unitId)
+        {
+            var unit = await _db.Units
+                .Include(u => u.Property)
+                .FirstOrDefaultAsync(u => u.UnitId == unitId);
+
+            if (unit == null)
+                return NotFound();
+
+            var vm = new ApplyUnitViewModel
+            {
+                UnitId = unit.UnitId,
+                PropertyName = unit.Property.Name,
+                UnitNumber = unit.UnitNumber,
+                RentAmount = unit.RentAmount,
+                StartDate = DateTime.Today.AddDays(1),
+                EndDate = DateTime.Today.AddMonths(12)
+            };
+
+            return View(vm);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Apply(int unitId)
+        public async Task<IActionResult> Apply(ApplyUnitViewModel vm)
+        {
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            return View("ConfirmApplication", vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmApplication(ApplyUnitViewModel vm)
         {
             var user = await _userManager.GetUserAsync(User);
 
-            if (user == null) return Challenge();
+            if (user == null)
+                return Challenge();
 
-            // prevent duplicate application
-            var existing = await _db.Tenancies
-                .AnyAsync(a => a.UnitId == unitId && a.TenantId == user.Id && a.Status == "Pending");
+            var exists = await _db.Tenancies.AnyAsync(t =>
+                t.UnitId == vm.UnitId &&
+                t.TenantId == user.Id &&
+                t.Status == "Pending");
 
-            if (existing)
+            if (exists)
             {
                 TempData["Error"] = "You already applied for this unit.";
                 return RedirectToAction(nameof(BrowseUnits));
             }
 
-            var application = new Tenancy
+            var tenancy = new Tenancy
             {
-                UnitId = unitId,
+                UnitId = vm.UnitId,
                 TenantId = user.Id,
-                Status = "Pending"
+                StartDate = vm.StartDate.ToUniversalTime(),
+                EndDate = vm.EndDate.ToUniversalTime(),
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
             };
 
-            _db.Tenancies.Add(application);
+            _db.Tenancies.Add(tenancy);
+
             await _db.SaveChangesAsync();
 
             TempData["Success"] = "Application submitted successfully.";
-            return RedirectToAction(nameof(BrowseUnits));
+
+            return RedirectToAction(nameof(MyApplications));
         }
 
         public async Task<IActionResult> MyApplications()
