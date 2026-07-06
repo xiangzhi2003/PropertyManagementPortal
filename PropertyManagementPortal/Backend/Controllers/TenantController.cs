@@ -154,22 +154,26 @@ namespace PropertyManagementPortal.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
-            var units = await _db.Tenancies
+            var tenancyUnits = await _db.Tenancies
                 .Include(t => t.Unit)
                 .ThenInclude(u => u.Property)
-                .Where(t => t.TenantId == user.Id &&
-                            t.Status == "Approved")
-                .Select(t => new SelectListItem
-                {
-                    Value = t.UnitId.ToString(),
-                    Text = $"{t.Unit.Property.Name} - Unit {t.Unit.UnitNumber}"
-                })
+                .Where(t => t.TenantId == user.Id && t.Status == "Approved")
                 .ToListAsync();
 
             var vm = new MaintenanceRequestViewModel
             {
-                Units = units
+                Units = tenancyUnits.Select(t => new SelectListItem
+                {
+                    Value = t.UnitId.ToString(),
+                    Text = $"{t.Unit.Property.Name} - Unit {t.Unit.UnitNumber}"
+                }).ToList()
             };
+
+            // auto-select first unit
+            if (tenancyUnits.Count == 1)
+            {
+                vm.UnitId = tenancyUnits.First().UnitId;
+            }
 
             return View(vm);
         }
