@@ -1,0 +1,54 @@
+@model PropertyManagementPortal.ViewModels.Shared.NotificationsViewModel
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Notifications</h4>
+        <span class="text-muted small">@Model.UnreadCount unread &middot; @Model.TotalCount total</span>
+    </div>
+    <div class="btn-group btn-group-sm" role="group">
+        <a asp-action="Notifications"
+           class="btn @(string.IsNullOrEmpty(Model.ReadFilter) ? "btn-primary" : "btn-outline-primary")">All</a>
+        <a asp-action="Notifications" asp-route-readFilter="Unread"
+           class="btn @(Model.ReadFilter == "Unread" ? "btn-primary" : "btn-outline-primary")">Unread</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-4">
+        @if (!Model.Notifications.Any())
+        {
+            <p class="text-muted mb-0 py-3 text-center">
+                @(Model.ReadFilter == "Unread" ? "No unread notifications." : "No notifications yet.")
+            </p>
+        }
+        else
+        {
+            @foreach (var n in Model.Notifications)
+            {
+                <div class="activity-item @(n.IsRead ? "" : "fw-semibold")">
+                    <div class="d-flex gap-3 align-items-start">
+                        <div class="activity-dot mt-2" style="@(n.IsRead ? "background:#cbd5e1;" : "")"></div>
+                        <div>
+                            <span style="font-size:.92rem;">@n.Message</span>
+                            <div class="text-muted mt-1" style="font-size:.8rem;">
+                                @n.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                            </div>
+                        </div>
+                    </div>
+                    @if (!n.IsRead)
+                    {
+                        <form method="post" asp-action="MarkRead" class="ms-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@n.NotificationId" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Mark read</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-light border text-muted">Read</span>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
