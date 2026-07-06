@@ -1,0 +1,87 @@
+@model PropertyManagementPortal.ViewModels.Tenant.ApplyUnitViewModel
+
+@{
+    ViewData["Title"] = "Confirm Application";
+
+    var months =
+        ((Model.EndDate.Year - Model.StartDate.Year) * 12) +
+        Model.EndDate.Month - Model.StartDate.Month + 1;
+
+    var total = months * Model.RentAmount;
+}
+
+<h3 class="fw-bold mb-4">
+    Confirm Application
+</h3>
+
+<div class="card">
+
+    <div class="card-body">
+
+        <table class="table">
+
+            <tr>
+                <th width="220">Property</th>
+                <td>@Model.PropertyName</td>
+            </tr>
+
+            <tr>
+                <th>Unit</th>
+                <td>@Model.UnitNumber</td>
+            </tr>
+
+            <tr>
+                <th>Monthly Rent</th>
+                <td>RM @Model.RentAmount.ToString("N2")</td>
+            </tr>
+
+            <tr>
+                <th>Lease Start</th>
+                <td>@Model.StartDate.ToString("dd MMM yyyy")</td>
+            </tr>
+
+            <tr>
+                <th>Lease End</th>
+                <td>@Model.EndDate.ToString("dd MMM yyyy")</td>
+            </tr>
+
+            <tr>
+                <th>Estimated Total Rent</th>
+                <td>
+                    <strong>
+                        RM @total.ToString("N2")
+                    </strong>
+                </td>
+            </tr>
+
+        </table>
+
+        <form asp-action="ConfirmApplication" method="post">
+
+            @Html.AntiForgeryToken()
+
+            <input asp-for="UnitId" type="hidden"/>
+            <input asp-for="StartDate" type="hidden"/>
+            <input asp-for="EndDate" type="hidden"/>
+            <input asp-for="RentAmount" type="hidden"/>
+            <input asp-for="PropertyName" type="hidden"/>
+            <input asp-for="UnitNumber" type="hidden"/>
+
+            <div class="d-flex justify-content-between">
+
+                <a asp-action="BrowseUnits"
+                   class="btn btn-outline-secondary">
+                    Back
+                </a>
+
+                <button class="btn btn-success">
+                    Confirm Application
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
