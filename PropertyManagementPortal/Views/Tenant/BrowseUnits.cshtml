@@ -4,53 +4,129 @@
     ViewData["Title"] = "Browse Units";
 }
 
-<h4 class="fw-bold mb-3">Vacant Units</h4>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Available Units</h4>
+        <span class="text-muted small">
+            Browse vacant units and submit a tenancy application.
+        </span>
+    </div>
+
+    <span class="badge bg-success">
+        @Model.Count Vacant Unit(s)
+    </span>
+</div>
 
 @if (!Model.Any())
 {
     <div class="alert alert-info">
-        No vacant units available at the moment.
+        No vacant units are available at the moment.
     </div>
 }
 else
 {
-    <div class="row g-3">
+    <div class="row g-4">
+
         @foreach (var unit in Model)
         {
-            <div class="col-md-4">
-                <div class="card h-100">
+            <div class="col-lg-4 col-md-6">
+
+                <div class="card shadow-sm border-0 h-100">
+
+                    <div class="card-header bg-white border-0 pt-4 pb-0">
+
+                        <div class="d-flex justify-content-between align-items-start">
+
+                            <div>
+                                <h5 class="fw-bold mb-1">
+                                    Unit @unit.UnitNumber
+                                </h5>
+
+                                <div class="text-muted small">
+                                    @unit.Property.Name
+                                </div>
+                            </div>
+
+                            <span class="badge bg-success">
+                                Vacant
+                            </span>
+
+                        </div>
+
+                    </div>
+
                     <div class="card-body">
 
-                        <h5 class="fw-bold">
-                            @unit.UnitNumber
-                        </h5>
+                        <div class="mb-3">
 
-                        <p class="text-muted mb-1">
-                            @unit.Property.Name
-                        </p>
+                            <div class="row mb-2">
+                                <div class="col-5 text-muted">
+                                    Type
+                                </div>
+                                <div class="col-7 fw-semibold">
+                                    @unit.Type
+                                </div>
+                            </div>
 
-                        <p class="mb-1">
-                            Type: @unit.Type
-                        </p>
+                            <div class="row mb-2">
+                                <div class="col-5 text-muted">
+                                    Floor
+                                </div>
+                                <div class="col-7 fw-semibold">
+                                    @unit.Floor
+                                </div>
+                            </div>
 
-                        <p class="mb-1">
-                            Floor: @unit.Floor
-                        </p>
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">
+                                    Monthly Rent
+                                </div>
+                                <div class="col-7">
+                                    <span class="fw-bold text-primary fs-5">
+                                        RM @unit.RentAmount.ToString("N2")
+                                    </span>
+                                </div>
+                            </div>
 
-                        <p class="fw-bold text-primary">
-                            RM @unit.RentAmount
-                        </p>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(unit.Description))
+                        {
+                            <div class="mb-3">
+
+                                <div class="small text-muted mb-1">
+                                    Description
+                                </div>
+
+                                <div class="small">
+                                    @unit.Description
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+
+                    <div class="card-footer bg-white border-0 pt-0 pb-4">
 
                         <form asp-action="Apply" method="get">
-                            <input type="hidden" name="unitId" value="@unit.UnitId" />
-                            <button class="btn btn-primary btn-sm w-100">
-                                Apply
+
+                            <input type="hidden"
+                                   name="unitId"
+                                   value="@unit.UnitId" />
+
+                            <button class="btn btn-primary w-100">
+                                Apply for this Unit
                             </button>
+
                         </form>
 
                     </div>
+
                 </div>
+
             </div>
         }
+
     </div>
 }

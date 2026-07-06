@@ -37,6 +37,8 @@ namespace PropertyManagementPortal.Controllers
                 .Include(t => t.Unit)
                 .ThenInclude(u => u.Property)
                 .FirstOrDefaultAsync(t => t.TenantId == user.Id && t.Status == "Approved");
+            var unitCount = await _db.Units
+                .CountAsync(u => u.Status == "Vacant");
             var applicationCount = await _db.Tenancies
                 .CountAsync(t => t.TenantId == user.Id);
             var pendingApplicationsCount = await _db.Set<Tenancy>()
@@ -52,6 +54,7 @@ namespace PropertyManagementPortal.Controllers
                 PendingRequest = pendingRequest,
                 RejectedRequest = rejectedRequest,
                 CurrentTenancy = currentTenancy,
+                UnitCount = unitCount,
                 ApplicationCount = applicationCount,
                 PendingApplicationsCount = pendingApplicationsCount,
                 ActiveMaintenanceCount = activeMaintenanceCount,
@@ -122,8 +125,8 @@ namespace PropertyManagementPortal.Controllers
                 RentAmount = unit.RentAmount,
                 Floor = unit.Floor,
                 Description = unit.Description,
-                StartDate = DateTime.Today.AddDays(1),
-                EndDate = DateTime.Today.AddMonths(12)
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddDays(1)
             };
 
             return View(vm);

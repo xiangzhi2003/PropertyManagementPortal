@@ -4,7 +4,18 @@
     ViewData["Title"] = "My Applications";
 }
 
-<h4 class="fw-bold mb-3">My Applications</h4>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">My Applications</h4>
+        <span class="text-muted small">
+            Track your rental applications and tenancy status.
+        </span>
+    </div>
+
+    <span class="badge bg-primary">
+        @Model.Count Application(s)
+    </span>
+</div>
 
 @if (!Model.Any())
 {
@@ -14,43 +25,95 @@
 }
 else
 {
-    <div class="card">
-        <div class="card-body">
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
 
-            <table class="table table-hover align-middle">
-                <thead>
+            <table class="table table-hover align-middle mb-0">
+
+                <thead style="background:#f8fafc;">
                     <tr>
-                        <th>Property</th>
+                        <th class="ps-4">Property</th>
                         <th>Unit</th>
-                        <th>Applied Date</th>
+                        <th>Lease Period</th>
+                        <th>Rent</th>
                         <th>Status</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @foreach (var app in Model)
-                    {
-                        <tr>
-                            <td>@app.Unit.Property.Name</td>
-                            <td>@app.Unit.UnitNumber</td>
 
-                            <td>
-                                @if (app.Status == "Pending")
-                                {
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                }
-                                else if (app.Status == "Approved")
-                                {
-                                    <span class="badge bg-success">Approved</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Rejected</span>
-                                }
-                            </td>
-                        </tr>
-                    }
+                @foreach (var item in Model)
+                {
+                    var months =
+                        ((item.EndDate.Year - item.StartDate.Year) * 12)
+                        + item.EndDate.Month - item.StartDate.Month;
+
+                    if (months <= 0)
+                        months = 1;
+
+                    var total = months * item.Unit.RentAmount;
+
+                    var (bg, fg) = item.Status switch
+                    {
+                        "Approved" => ("#dcfce7", "#16a34a"),
+                        "Rejected" => ("#fee2e2", "#dc2626"),
+                        _ => ("#fef3c7", "#d97706")
+                    };
+
+                    <tr>
+
+                        <td class="ps-4">
+                            <div class="fw-semibold">
+                                @item.Unit.Property.Name
+                            </div>
+
+                            <small class="text-muted">
+                                Applied @item.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+                            </small>
+                        </td>
+
+                        <td>
+                            Unit @item.Unit.UnitNumber
+                        </td>
+
+                        <td>
+                            <div>
+                                @item.StartDate.ToString("dd MMM yyyy")
+                            </div>
+
+                            <small class="text-muted">
+                                until @item.EndDate.ToString("dd MMM yyyy")
+                            </small>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">
+                                RM @item.Unit.RentAmount.ToString("N2") / month
+                            </div>
+
+                            <small class="text-muted">
+                                @months month(s)
+                            </small>
+
+                            <br />
+
+                            <small class="text-primary">
+                                Total RM @total.ToString("N2")
+                            </small>
+                        </td>
+
+                        <td>
+                            <span class="badge"
+                                  style="background:@bg;color:@fg;">
+                                @item.Status
+                            </span>
+                        </td>
+
+                    </tr>
+                }
+
                 </tbody>
+
             </table>
 
         </div>

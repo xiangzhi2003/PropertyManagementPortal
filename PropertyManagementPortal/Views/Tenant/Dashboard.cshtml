@@ -33,6 +33,205 @@
     </div>
 }
 
+<div class="row g-4 mb-4">
+
+    <!-- Current Unit -->
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="BrowseUnits" class="text-decoration-none">
+            <div class="card stat-card" style="border-left:4px solid #2563eb;">
+                <div class="d-flex justify-content-between align-items-start">
+
+                    <div>
+                        <p class="stat-label">Browse Units</p>
+
+                        <div class="stat-number text-primary">
+                            @Model.UnitCount
+                        </div>
+
+                        <p class="stat-sub">
+                            Applications submitted
+                        </p>
+                    </div>
+
+                    <div class="stat-icon" style="background:#dbeafe;">
+                        🏠
+                    </div>
+
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Applications -->
+
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="MyApplications" class="text-decoration-none">
+
+            <div class="card stat-card" style="border-left:4px solid #d97706;">
+
+                <div class="d-flex justify-content-between">
+
+                    <div>
+
+                        <p class="stat-label">
+                            Applications
+                        </p>
+
+                        <div class="stat-number text-warning">
+                            @Model.ApplicationCount
+                        </div>
+
+                        <p class="stat-sub">
+                            @Model.PendingApplicationsCount Pending
+                        </p>
+
+                    </div>
+
+                    <div class="stat-icon" style="background:#fef3c7;">
+                        📄
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+    </div>
+
+    <!-- Maintenance -->
+
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="MyMaintenance" class="text-decoration-none">
+
+            <div class="card stat-card" style="border-left:4px solid #7c3aed;">
+
+                <div class="d-flex justify-content-between">
+
+                    <div>
+
+                        <p class="stat-label">
+                            Maintenance
+                        </p>
+
+                        <div class="stat-number" style="color:#7c3aed;">
+                            @Model.ActiveMaintenanceCount
+                        </div>
+
+                        <p class="stat-sub">
+                            Active requests
+                        </p>
+
+                    </div>
+
+                    <div class="stat-icon" style="background:#ede9fe;">
+                        🔧
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+    </div>
+
+    <!-- Outstanding -->
+
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="MyPayments" class="text-decoration-none">
+
+            <div class="card stat-card" style="border-left:4px solid #dc2626;">
+
+                <div class="d-flex justify-content-between">
+
+                    <div>
+
+                        <p class="stat-label">
+                            Outstanding
+                        </p>
+
+                        <div class="stat-number text-danger">
+                            RM @Model.OutstandingPayments
+                        </div>
+
+                        <p class="stat-sub">
+                            Awaiting payment
+                        </p>
+
+                    </div>
+
+                    <div class="stat-icon" style="background:#fee2e2;">
+                        💰
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+    </div>
+
+</div>
+
+@if (tenancy != null)
+{
+    <div class="card mb-4">
+
+        <div class="card-body p-4">
+
+            <h5 class="fw-bold mb-3">
+                Current Tenancy
+            </h5>
+
+            <div class="row">
+
+                <div class="col-md-3">
+                    <small class="text-muted">Property</small>
+
+                    <div class="fw-semibold">
+                        @tenancy.Unit.Property.Name
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <small class="text-muted">Unit</small>
+
+                    <div class="fw-semibold">
+                        @tenancy.Unit.UnitNumber
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <small class="text-muted">Rent</small>
+
+                    <div class="fw-semibold">
+                        RM @tenancy.Unit.RentAmount
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <small class="text-muted">Start</small>
+
+                    <div class="fw-semibold">
+                        @tenancy.StartDate.ToString("dd MMM yyyy")
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <small class="text-muted">End</small>
+
+                    <div class="fw-semibold">
+                        @tenancy.EndDate.ToString("dd MMM yyyy")
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+
 <!-- Role request status banner -->
 @if (pendingRequest != null)
 {
