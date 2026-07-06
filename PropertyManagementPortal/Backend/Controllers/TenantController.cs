@@ -229,5 +229,29 @@ namespace PropertyManagementPortal.Controllers
 
             return View(requests);
         }
+
+        public async Task<IActionResult> MyPayments()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var payments = await _db.Payments
+                .Include(p => p.Tenancy)
+                    .ThenInclude(t => t.Unit)
+                        .ThenInclude(u => u.Property)
+                .Where(p => p.Tenancy.TenantId == user.Id)
+                .OrderByDescending(p => p.DueDate)
+                .Select(p => new PaymentViewModel
+                {
+                    PropertyName = p.Tenancy.Unit.Property.Name,
+                    UnitNumber = p.Tenancy.Unit.UnitNumber,
+                    Amount = p.Amount,
+                    PaymentDate = p.PaymentDate,
+                    DueDate = p.DueDate,
+                    Status = p.Status
+                })
+                .ToListAsync();
+
+            return View(payments);
+        }
     }
 }
