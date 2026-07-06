@@ -11,9 +11,12 @@ namespace PropertyManagementPortal.Controllers
     [Authorize(Roles = "MaintenanceStaff")]
     public class MaintenanceController : AppControllerBase
     {
-        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        private readonly IWebHostEnvironment _env;
+
+        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env)
             : base(db, userManager)
         {
+            _env = env;
         }
 
         // ── DASHBOARD ────────────────────────────────────────────────────────
@@ -165,6 +168,90 @@ namespace PropertyManagementPortal.Controllers
             return View(vm);
         }
 
-        // Notifications + MarkRead are inherited from AppControllerBase.
+        // ── UPDATE JOB STATUS ────────────────────────────────────────────────
+        // The status lifecycle. Each job advances one step at a time; there is no
+        // skipping and no going back.
+        private static string? NextStatusFor(string current) => current switch
+        {
+            "Assigned" => "InProgress",
+            "InProgress" => "Completed",
+            _ => null            // Completed (or anything unexpected) is terminal
+        };
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateJob(UpdateJobViewModel vm)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            var request = await _db.MaintenanceRequests
+                .Include(r => r.Unit).ThenInclude(u => u.Property)
+                .FirstOrDefaultAsync(r => r.RequestId == vm.RequestId && r.AssignedStaffId == userId);
+
+            if (request == null) return NotFound();
+
+            // Re-derive the allowed next status from the CURRENT DB state — never trust
+            // the posted status. This blocks skipping steps or replaying an old form.
+            var next = NextStatusFor(request.Status);
+            if (next == null)
+            {
+                TempData["Error"] = "This job is already completed and cannot be updated.";
+                return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+            }
+
+            // Note is always required; evidence photo is required only when completing.
+            if (string.IsNullOrWhiteSpace(vm.Notes))
+            {
+                TempData["Error"] = "Please add a note describing this update.";
+                return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+            }
+
+            if (next == "Completed" && vm.EvidencePhoto == null)
+            {
+                TempData["Error"] = "A repair evidence photo is required to complete the job.";
+                return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+            }
+
+            string? evidenceUrl = null;
+            if (vm.EvidencePhoto != null)
+                evidenceUrl = await SaveEvidencePhotoAsync(vm.EvidencePhoto);
+
+            // 1) Write a history row for this transition.
+            _db.MaintenanceUpdates.Add(new MaintenanceUpdate
+            {
+                RequestId = request.RequestId,
+                StaffId = userId!,
+                StatusUpdate = next,
+                Notes = vm.Notes,
+                EvidencePhotoUrl = evidenceUrl,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            // 2) Advance the request itself.
+            request.Status = next;
+
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = $"Job marked as {next}.";
+            return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+        }
+
+        // Saves an uploaded photo to wwwroot/uploads and returns its web path.
+        // Isolated here so swapping to S3 later is a one-method change.
+        private async Task<string> SaveEvidencePhotoAsync(IFormFile photo)
+        {
+            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
+            Directory.CreateDirectory(uploadsDir);
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var fullPath = Path.Combine(uploadsDir, fileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await photo.CopyToAsync(stream);
+            }
+
+            return $"/uploads/{fileName}";
+        }
     }
 }
