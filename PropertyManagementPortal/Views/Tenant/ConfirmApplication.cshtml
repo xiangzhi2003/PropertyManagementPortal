@@ -31,6 +31,16 @@
             </tr>
 
             <tr>
+                <th>Floor</th>
+                <td>@Model.Floor</td>
+            </tr>
+
+            <tr>
+                <th>Description</th>
+                <td>@Model.Description</td>
+            </tr>
+
+            <tr>
                 <th>Monthly Rent</th>
                 <td>RM @Model.RentAmount.ToString("N2")</td>
             </tr>
@@ -63,6 +73,8 @@
             <input asp-for="UnitId" type="hidden"/>
             <input asp-for="StartDate" type="hidden"/>
             <input asp-for="EndDate" type="hidden"/>
+            <input asp-for="Floor" type="hidden"/>
+            <input asp-for="Description" type="hidden"/>
             <input asp-for="RentAmount" type="hidden"/>
             <input asp-for="PropertyName" type="hidden"/>
             <input asp-for="UnitNumber" type="hidden"/>
@@ -71,7 +83,7 @@
 
                 <a asp-action="BrowseUnits"
                    class="btn btn-outline-secondary">
-                    Back
+                    Cancel
                 </a>
 
                 <button class="btn btn-success">

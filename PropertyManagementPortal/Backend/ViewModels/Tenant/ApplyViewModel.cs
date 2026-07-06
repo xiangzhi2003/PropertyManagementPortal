@@ -13,6 +13,10 @@ namespace PropertyManagementPortal.ViewModels.Tenant
 
         public decimal RentAmount { get; set; }
 
+        public int Floor { get; set; }
+        
+        public string Description { get; set; } = "";
+        
         [DataType(DataType.Date)]
         public DateTime StartDate { get; set; }
 

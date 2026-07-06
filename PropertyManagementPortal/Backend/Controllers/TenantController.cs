@@ -120,6 +120,8 @@ namespace PropertyManagementPortal.Controllers
                 PropertyName = unit.Property.Name,
                 UnitNumber = unit.UnitNumber,
                 RentAmount = unit.RentAmount,
+                Floor = unit.Floor,
+                Description = unit.Description,
                 StartDate = DateTime.Today.AddDays(1),
                 EndDate = DateTime.Today.AddMonths(12)
             };
