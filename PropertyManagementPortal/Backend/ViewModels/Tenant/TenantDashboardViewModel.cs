@@ -8,6 +8,7 @@ namespace PropertyManagementPortal.ViewModels.Tenant
         public RoleRequest? RejectedRequest { get; set; }
         public Tenancy? CurrentTenancy { get; set; }
 
+        public int UnitCount { get; set; }
         public int ApplicationCount { get; set; }
         public int PendingApplicationsCount { get; set; }
         public int ActiveMaintenanceCount { get; set; }
