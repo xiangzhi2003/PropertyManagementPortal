@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
 using PropertyManagementPortal.ViewModels.Tenant;
@@ -149,26 +150,80 @@ namespace PropertyManagementPortal.Controllers
             return View(applications);
         }
 
-        public IActionResult Maintenance()
+        public async Task<IActionResult> Maintenance()
         {
-            return View();
+            var user = await _userManager.GetUserAsync(User);
+
+            var units = await _db.Tenancies
+                .Include(t => t.Unit)
+                .ThenInclude(u => u.Property)
+                .Where(t => t.TenantId == user.Id &&
+                            t.Status == "Approved")
+                .Select(t => new SelectListItem
+                {
+                    Value = t.UnitId.ToString(),
+                    Text = $"{t.Unit.Property.Name} - Unit {t.Unit.UnitNumber}"
+                })
+                .ToListAsync();
+
+            var vm = new MaintenanceRequestViewModel
+            {
+                Units = units
+            };
+
+            return View(vm);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Maintenance(MaintenanceRequest model)
+        public async Task<IActionResult> Maintenance(MaintenanceRequestViewModel vm)
         {
             var user = await _userManager.GetUserAsync(User);
 
-            model.TenantId = user.Id;
-            model.Status = "Pending";
-            model.CreatedAt = DateTime.UtcNow;
+            if (!ModelState.IsValid)
+            {
+                // reload dropdown if validation fails
+                vm.Units = await _db.Tenancies
+                    .Include(t => t.Unit)
+                    .ThenInclude(u => u.Property)
+                    .Where(t => t.TenantId == user.Id && t.Status == "Approved")
+                    .Select(t => new SelectListItem
+                    {
+                        Value = t.UnitId.ToString(),
+                        Text = $"{t.Unit.Property.Name} - Unit {t.Unit.UnitNumber}"
+                    })
+                    .ToListAsync();
 
-            _db.MaintenanceRequests.Add(model);
+                return View(vm);
+            }
+
+            var request = new MaintenanceRequest
+            {
+                TenantId = user.Id,
+                UnitId = vm.UnitId,
+                Category = vm.Category,
+                Description = vm.Description,
+                Status = "Submitted",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.MaintenanceRequests.Add(request);
             await _db.SaveChangesAsync();
 
             TempData["Success"] = "Maintenance request submitted.";
-            return RedirectToAction(nameof(Maintenance));
+            return RedirectToAction(nameof(MyMaintenance));
+        }
+
+        public async Task<IActionResult> MyMaintenance()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var requests = await _db.MaintenanceRequests
+                .Where(m => m.TenantId == user.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+
+            return View(requests);
         }
     }
 }
