@@ -37,13 +37,17 @@ else
                             <td>@req.CreatedAt.ToString("dd MMM yyyy")</td>
 
                             <td>
-                                @if (req.Status == "Pending")
+                                @if (req.Status == "Submitted")
                                 {
-                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    <span class="badge bg-warning text-dark">Submitted</span>
                                 }
-                                else if (req.Status == "In Progress")
+                                else if (req.Status == "Assigned")
                                 {
-                                    <span class="badge bg-primary">In Progress</span>
+                                    <span class="badge bg-primary">Assigned</span>
+                                }
+                                else if (req.Status == "InProgress")
+                                {
+                                    <span class="badge bg-info">In Progress</span>
                                 }
                                 else
                                 {
