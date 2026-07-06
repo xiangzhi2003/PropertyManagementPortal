@@ -10,12 +10,13 @@ using PropertyManagementPortal.ViewModels.Tenant;
 namespace PropertyManagementPortal.Controllers
 {
     [Authorize(Roles = "Tenant")]
-    public class TenantController : Controller
+    public class TenantController : AppControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
 
         public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        : base(db, userManager)
         {
             _db = db;
             _userManager = userManager;

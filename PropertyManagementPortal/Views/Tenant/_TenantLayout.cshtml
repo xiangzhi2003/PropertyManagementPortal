@@ -93,6 +93,7 @@
                     <path d="M8 1a5 5 0 0 0-5 5v2.086l-.707 1.707A1 1 0 0 0 3.207 11h9.586a1 1 0 0 0 .914-1.207L13 8.086V6a5 5 0 0 0-5-5z"/>
                 </svg>
                 Notifications
+                @await Component.InvokeAsync("NotificationBadge")
             </a>
         </nav>
     </aside>
