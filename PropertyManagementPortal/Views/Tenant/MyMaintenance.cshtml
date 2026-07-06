@@ -1,0 +1,61 @@
+@model List<PropertyManagementPortal.Models.MaintenanceRequest>
+
+@{
+    ViewData["Title"] = "My Maintenance Requests";
+}
+
+<h4 class="fw-bold mb-3">My Maintenance Requests</h4>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No maintenance requests found.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+
+            <table class="table table-hover">
+
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var req in Model)
+                    {
+                        <tr>
+                            <td>@req.Category</td>
+                            <td>@req.Description</td>
+                            <td>@req.CreatedAt.ToString("dd MMM yyyy")</td>
+
+                            <td>
+                                @if (req.Status == "Pending")
+                                {
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                }
+                                else if (req.Status == "In Progress")
+                                {
+                                    <span class="badge bg-primary">In Progress</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Completed</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+}
