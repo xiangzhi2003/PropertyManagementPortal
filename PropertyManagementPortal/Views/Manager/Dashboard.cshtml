@@ -104,16 +104,58 @@
 </div>
 
 <!-- Occupancy overview -->
-<div class="card">
-    <div class="card-body p-4">
-        <h6 class="section-heading mb-3">Occupancy Overview</h6>
-        <div class="mb-1 d-flex justify-content-between align-items-center">
-            <span class="small text-muted">@Model.OccupiedUnits of @Model.TotalUnits units occupied</span>
-            <span class="small fw-semibold">@Model.OccupancyRate%</span>
+<div class="row g-4">
+    <!-- Needs Attention chart -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-3">Needs Attention</h6>
+                <div style="height:220px;"><canvas id="attentionChart"></canvas></div>
+            </div>
         </div>
-        <div class="progress" style="height:16px;border-radius:8px;">
-            <div class="progress-bar bg-success" style="width:@Model.OccupancyRate%;border-radius:8px;"
-                 role="progressbar" aria-valuenow="@Model.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+
+    <!-- Occupancy overview -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-3">Occupancy Overview</h6>
+                <div class="mb-1 d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">@Model.OccupiedUnits of @Model.TotalUnits units occupied</span>
+                    <span class="small fw-semibold">@Model.OccupancyRate%</span>
+                </div>
+                <div class="progress" style="height:16px;border-radius:8px;">
+                    <div class="progress-bar bg-success" style="width:@Model.OccupancyRate%;border-radius:8px;"
+                         role="progressbar" aria-valuenow="@Model.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        new Chart(document.getElementById('attentionChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Pending Applications', 'Overdue Rent', 'Unassigned Maintenance'],
+                datasets: [{
+                    label: 'Items',
+                    data: [@Model.PendingApplications, @Model.OverduePayments, @Model.UnassignedMaintenance],
+                    backgroundColor: ['#d97706', '#dc2626', '#7c3aed'],
+                    borderRadius: 6,
+                    barThickness: 28
+                }]
+            },
+            options: {
+                indexAxis: 'y',                  // horizontal bars
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                }
+            }
+        });
+    </script>
+}
