@@ -554,6 +554,7 @@ namespace PropertyManagementPortal.Controllers
             var propertyIds = await GetManagedPropertyIdsAsync();
  
             var request = await _db.MaintenanceRequests
+                .Include(m => m.Unit)
                 .FirstOrDefaultAsync(m => m.RequestId == id && propertyIds.Contains(m.Unit.PropertyId));
  
             if (request == null)
@@ -586,6 +587,14 @@ namespace PropertyManagementPortal.Controllers
             request.Status = "Assigned";
             request.Priority = priority;
             request.AssignmentNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            // Notify the assigned maintenance staff.
+            _db.Notifications.Add(new Notification
+            {
+                UserId = staff.Id,
+                Message = $"You have been assigned a {priority} priority {request.Category} request at Unit {request.Unit.UnitNumber}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
             await _db.SaveChangesAsync();
  
             TempData["Success"] = $"Request assigned to {staff.FullName} ({priority} priority).";
