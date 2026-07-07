@@ -15,7 +15,7 @@
 else
 {
     <div class="card">
-        <div class="card-body">
+        <div class="table-responsive">
 
             <table class="table table-hover">
 
@@ -27,6 +27,7 @@ else
                         <th>Due Date</th>
                         <th>Payment Date</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
 
@@ -36,11 +37,13 @@ else
                     <tr>
                         <td>@p.PropertyName</td>
                         <td>@p.UnitNumber</td>
-                        <td>RM @p.Amount</td>
+                        <td>RM @p.Amount.ToString("N2")</td>
                         <td>@p.DueDate.ToString("dd MMM yyyy")</td>
+
                         <td>
                             @(p.PaymentDate?.ToString("dd MMM yyyy") ?? "-")
                         </td>
+
                         <td>
                             @if (p.Status == "Paid")
                             {
@@ -55,11 +58,113 @@ else
                                 <span class="badge bg-warning text-dark">Pending</span>
                             }
                         </td>
+
+                        <td>
+                            @if (p.Status != "Paid")
+                            {
+                                <button class="btn btn-primary btn-sm"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#paymentModal-@p.PaymentId">
+                                    Pay
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Completed</span>
+                            }
+                        </td>
                     </tr>
                 }
                 </tbody>
-
             </table>
+
+                @foreach (var p in Model)
+                {
+                    if (p.Status != "Paid")
+                    {
+                        <div class="modal fade"
+                            id="paymentModal-@p.PaymentId"
+                            tabindex="-1">
+
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">
+                                            Confirm Payment
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close"
+                                                data-bs-dismiss="modal">
+                                        </button>
+                                    </div>
+
+                                    <div class="modal-body">
+
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Property</th>
+                                                <td>@p.PropertyName</td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Unit</th>
+                                                <td>@p.UnitNumber</td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Amount</th>
+                                                <td>
+                                                    <strong>
+                                                        RM @p.Amount.ToString("N2")
+                                                    </strong>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Due Date</th>
+                                                <td>
+                                                    @p.DueDate.ToString("dd MMM yyyy")
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <div class="alert alert-info">
+                                            You will be redirected to Stripe to complete payment.
+                                        </div>
+
+                                    </div>
+
+                                    <div class="modal-footer">
+
+                                        <button type="button"
+                                                class="btn btn-secondary"
+                                                data-bs-dismiss="modal">
+                                            Cancel
+                                        </button>
+
+                                        <form asp-action="Checkout" method="post">
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                name="paymentId"
+                                                value="@p.PaymentId" />
+
+                                            <button class="btn btn-success">
+                                                Proceed to Stripe
+                                            </button>
+                                        </form>
+
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    }
+                }
+
 
         </div>
     </div>
