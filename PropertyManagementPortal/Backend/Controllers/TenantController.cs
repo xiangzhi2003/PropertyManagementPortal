@@ -123,7 +123,7 @@ namespace PropertyManagementPortal.Controllers
                 Floor = unit.Floor,
                 Description = unit.Description ?? "",
                 StartDate = DateTime.Today,
-                EndDate = DateTime.Today.AddDays(1)
+                EndDate = DateTime.Today
             };
 
             return View(vm);
