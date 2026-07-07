@@ -16,6 +16,7 @@ namespace PropertyManagementPortal.ViewModels.Manager
         public int OverdueCount { get; set; }
         public int PaidCount { get; set; }
         public decimal OutstandingAmount { get; set; }
+        public decimal PaidAmount { get; set; }
     }
  
     public class PaymentRowViewModel
