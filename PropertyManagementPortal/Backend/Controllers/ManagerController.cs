@@ -24,7 +24,6 @@ namespace PropertyManagementPortal.Controllers
         // ── SCOPING HELPERS ──────────────────────────────────────────────────
         // Every Manager action is limited to the properties assigned to the
         // logged-in manager. These two helpers are the single source of truth.
- 
         private async Task<List<int>> GetManagedPropertyIdsAsync()
         {
             var userId = _userManager.GetUserId(User);
@@ -198,7 +197,6 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> EditUnit(UnitFormViewModel vm)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
- 
             // Re-fetch and re-check ownership before touching anything.
             var unit = await _db.Units
                 .FirstOrDefaultAsync(u => u.UnitId == vm.UnitId && propertyIds.Contains(u.PropertyId));
@@ -298,7 +296,7 @@ namespace PropertyManagementPortal.Controllers
             tenancy.Status = "Approved";
             tenancy.Unit.Status = "Occupied";
  
-            // Auto-reject every other pending application on the same unit —
+            // Auto-reject every other pending application on the same unit.
             // a unit can only be assigned to one tenant.
             var others = await _db.Tenancies
                 .Where(t => t.UnitId == tenancy.UnitId
@@ -312,10 +310,47 @@ namespace PropertyManagementPortal.Controllers
                 other.Notes = "Automatically declined — the unit was assigned to another applicant.";
             }
  
+            // Generate the monthly rent schedule for the whole lease period.
+            var rent = tenancy.Unit.RentAmount;
+            var scheduled = 0;
+            DateTime firstDue = default;
+ 
+            if (tenancy.EndDate >= tenancy.StartDate)
+            {
+                // Normalise to the 1st of the start month — rent is charged early each month.
+                // DateTimeKind.Utc is REQUIRED for PostgreSQL/Npgsql timestamptz columns.
+                firstDue = new DateTime(tenancy.StartDate.Year, tenancy.StartDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var lastMonth = new DateTime(tenancy.EndDate.Year, tenancy.EndDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+ 
+                for (var due = firstDue; due <= lastMonth; due = due.AddMonths(1))
+                {
+                    _db.Payments.Add(new Payment
+                    {
+                        TenancyId = tenancy.TenancyId,
+                        Amount = rent,
+                        DueDate = due,
+                        PaymentDate = null,
+                        Status = "Pending"
+                    });
+                    scheduled++;
+                }
+            }
+ 
+            // Notify the tenant in-app.
+            _db.Notifications.Add(new Notification
+            {
+                UserId = tenancy.TenantId,
+                Message = scheduled > 0
+                    ? $"Your application for Unit {tenancy.Unit.UnitNumber} was approved. {scheduled} monthly rent payment(s) of RM {rent:N2} scheduled, starting {firstDue:dd MMM yyyy}."
+                    : $"Your application for Unit {tenancy.Unit.UnitNumber} was approved.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+ 
             await _db.SaveChangesAsync();
  
             var extra = others.Count > 0 ? $" {others.Count} other pending application(s) were auto-declined." : "";
-            TempData["Success"] = $"Application approved and unit {tenancy.Unit.UnitNumber} marked as occupied.{extra}";
+            TempData["Success"] = $"Application approved, unit {tenancy.Unit.UnitNumber} occupied, and {scheduled} rent payment(s) scheduled.{extra}";
             return RedirectToAction(nameof(Applications));
         }
  
@@ -354,15 +389,14 @@ namespace PropertyManagementPortal.Controllers
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
  
-            var query = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
+            // Property filter is applied in SQL; the status filter is applied in memory
+            // below so it can use the DERIVED overdue state, not just the stored status.
+            var baseQuery = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
  
             if (propertyId.HasValue)
-                query = query.Where(p => p.Tenancy.Unit.PropertyId == propertyId.Value);
+                baseQuery = baseQuery.Where(p => p.Tenancy.Unit.PropertyId == propertyId.Value);
  
-            if (!string.IsNullOrWhiteSpace(status))
-                query = query.Where(p => p.Status == status);
- 
-            var rows = await query
+            var rows = await baseQuery
                 .OrderBy(p => p.DueDate)
                 .Select(p => new PaymentRowViewModel
                 {
@@ -378,17 +412,30 @@ namespace PropertyManagementPortal.Controllers
                 })
                 .ToListAsync();
  
+            // Derive-on-read: an unpaid payment past its due date shows as Overdue.
+            var today = DateTime.UtcNow.Date;
+            foreach (var r in rows)
+            {
+                if (r.Status == "Pending" && r.DueDate.Date < today)
+                    r.Status = "Overdue";
+            }
+ 
+            // Summary reflects ALL payments in scope (computed before the status filter).
+            var pendingCount = rows.Count(r => r.Status == "Pending");
+            var overdueCount = rows.Count(r => r.Status == "Overdue");
+            var paidCount = rows.Count(r => r.Status == "Paid");
+            var outstandingAmount = rows.Where(r => r.Status != "Paid").Sum(r => r.Amount);
+            var paidAmount = rows.Where(r => r.Status == "Paid").Sum(r => r.Amount);
+ 
+            // Apply the status filter against the derived status.
+            if (!string.IsNullOrWhiteSpace(status))
+                rows = rows.Where(r => r.Status == status).ToList();
+ 
             // Order: Overdue first, then Pending, then Paid; soonest due within each.
             rows = rows
                 .OrderBy(r => r.Status == "Overdue" ? 0 : r.Status == "Pending" ? 1 : 2)
                 .ThenBy(r => r.DueDate)
                 .ToList();
- 
-            // Summary reflects ALL payments in the manager's units (ignores filters).
-            var all = await _db.Payments
-                .Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId))
-                .Select(p => new { p.Status, p.Amount })
-                .ToListAsync();
  
             var vm = new PaymentListViewModel
             {
@@ -396,10 +443,11 @@ namespace PropertyManagementPortal.Controllers
                 StatusFilter = status,
                 PropertyFilter = propertyId,
                 PropertyOptions = await GetPropertyOptionsAsync(),
-                PendingCount = all.Count(x => x.Status == "Pending"),
-                OverdueCount = all.Count(x => x.Status == "Overdue"),
-                PaidCount = all.Count(x => x.Status == "Paid"),
-                OutstandingAmount = all.Where(x => x.Status != "Paid").Sum(x => x.Amount)
+                PendingCount = pendingCount,
+                OverdueCount = overdueCount,
+                PaidCount = paidCount,
+                OutstandingAmount = outstandingAmount,
+                PaidAmount = paidAmount
             };
  
             return View(vm);
@@ -473,7 +521,7 @@ namespace PropertyManagementPortal.Controllers
                             : r.Status == "InProgress" ? 2 : 3)
                 .ThenByDescending(r => r.CreatedAt)
                 .ToList();
- 
+
             // Active maintenance staff available for assignment (not property-scoped —
             // staff are a shared pool, not tied to a property).
             var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
