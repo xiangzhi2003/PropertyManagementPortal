@@ -1,15 +1,4 @@
 @model PropertyManagementPortal.ViewModels.Shared.NotificationsViewModel
+@{ ViewData["Title"] = "Notifications"; }
 
-@{
-    ViewData["Title"] = "Notifications";
-}
-
-
-<div class="container-fluid">
-
-    @await Html.PartialAsync(
-        "_NotificationList",
-        Model
-    )
-
-</div>
+<partial name="_NotificationList" model="Model" />
