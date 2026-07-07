@@ -169,13 +169,14 @@ namespace PropertyManagementPortal.Controllers
         }
 
         // ── UPDATE JOB STATUS ────────────────────────────────────────────────
-        // The status lifecycle. Each job advances one step at a time; there is no
-        // skipping and no going back.
-        private static string? NextStatusFor(string current) => current switch
+        // Allowed forward moves. Only progress is permitted — never backwards, and a
+        // Completed job is terminal. InProgress may be skipped (Assigned → Completed).
+        private static bool IsValidTransition(string current, string target) => (current, target) switch
         {
-            "Assigned" => "InProgress",
-            "InProgress" => "Completed",
-            _ => null            // Completed (or anything unexpected) is terminal
+            ("Assigned", "InProgress") => true,
+            ("Assigned", "Completed") => true,
+            ("InProgress", "Completed") => true,
+            _ => false
         };
 
         [HttpPost]
@@ -190,14 +191,21 @@ namespace PropertyManagementPortal.Controllers
 
             if (request == null) return NotFound();
 
-            // Re-derive the allowed next status from the CURRENT DB state — never trust
-            // the posted status. This blocks skipping steps or replaying an old form.
-            var next = NextStatusFor(request.Status);
-            if (next == null)
+            // A completed job is terminal.
+            if (request.Status == "Completed")
             {
                 TempData["Error"] = "This job is already completed and cannot be updated.";
                 return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
             }
+
+            // Validate the chosen move against the CURRENT DB state — never trust the
+            // posted status blindly. Forward-only; skipping InProgress is allowed.
+            if (!IsValidTransition(request.Status, vm.TargetStatus))
+            {
+                TempData["Error"] = "That status change isn't allowed.";
+                return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+            }
+            var next = vm.TargetStatus;
 
             // Note is always required; evidence photo is required only when completing.
             if (string.IsNullOrWhiteSpace(vm.Notes))
@@ -210,6 +218,17 @@ namespace PropertyManagementPortal.Controllers
             {
                 TempData["Error"] = "A repair evidence photo is required to complete the job.";
                 return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+            }
+
+            // If a photo was supplied, it must pass the format + size checks.
+            if (vm.EvidencePhoto != null)
+            {
+                var photoError = ValidateEvidencePhoto(vm.EvidencePhoto);
+                if (photoError != null)
+                {
+                    TempData["Error"] = photoError;
+                    return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+                }
             }
 
             string? evidenceUrl = null;
@@ -234,6 +253,30 @@ namespace PropertyManagementPortal.Controllers
 
             TempData["Success"] = $"Job marked as {next}.";
             return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
+        }
+
+        // Allowed evidence photo formats and size cap.
+        private static readonly string[] AllowedPhotoExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+        private const long MaxPhotoBytes = 5 * 1024 * 1024; // 5 MB
+
+        // Returns an error message if the upload is not an accepted image, else null.
+        private static string? ValidateEvidencePhoto(IFormFile photo)
+        {
+            if (photo.Length == 0)
+                return "The selected file is empty.";
+
+            if (photo.Length > MaxPhotoBytes)
+                return "The photo must be 5 MB or smaller.";
+
+            var ext = Path.GetExtension(photo.FileName).ToLowerInvariant();
+            if (!AllowedPhotoExtensions.Contains(ext))
+                return "Only JPG, PNG, or WEBP images are allowed.";
+
+            // Content-type guard in addition to the extension check.
+            if (!photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return "The uploaded file is not a valid image.";
+
+            return null;
         }
 
         // Saves an uploaded photo to wwwroot/uploads and returns its web path.
