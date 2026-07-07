@@ -58,47 +58,49 @@ else
     <!-- Units table -->
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-hover align-middle mb-0">
-                <thead style="background:#f8fafc;">
-                    <tr>
-                        <th class="ps-3">Property</th>
-                        <th>Unit No.</th>
-                        <th>Type</th>
-                        <th>Floor</th>
-                        <th>Rent</th>
-                        <th>Status</th>
-                        <th class="text-end pe-3">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Units.Any())
-                    {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8fafc;">
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No units match your filters.</td>
+                            <th class="ps-3">Property</th>
+                            <th>Unit No.</th>
+                            <th>Type</th>
+                            <th>Floor</th>
+                            <th>Rent</th>
+                            <th>Status</th>
+                            <th class="text-end pe-3">Actions</th>
                         </tr>
-                    }
-                    else
-                    {
-                        @foreach (var u in Model.Units)
+                    </thead>
+                    <tbody>
+                        @if (!Model.Units.Any())
                         {
-                            var (bg, fg) = u.Status == "Occupied"
-                                ? ("#dcfce7", "#16a34a")
-                                : ("#f3f4f6", "#6b7280");
                             <tr>
-                                <td class="ps-3 fw-semibold">@u.PropertyName</td>
-                                <td>@u.UnitNumber</td>
-                                <td>@u.Type</td>
-                                <td>@u.Floor</td>
-                                <td>RM @u.RentAmount.ToString("N2")</td>
-                                <td><span class="badge" style="background:@bg;color:@fg;">@u.Status</span></td>
-                                <td class="text-end pe-3">
-                                    <a asp-action="EditUnit" asp-route-id="@u.UnitId" class="btn btn-sm btn-outline-primary">Edit</a>
-                                </td>
+                                <td colspan="7" class="text-center text-muted py-4">No units match your filters.</td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
+                        else
+                        {
+                            @foreach (var u in Model.Units)
+                            {
+                                var (bg, fg) = u.Status == "Occupied"
+                                    ? ("#dcfce7", "#16a34a")
+                                    : ("#f3f4f6", "#6b7280");
+                                <tr>
+                                    <td class="ps-3 fw-semibold">@u.PropertyName</td>
+                                    <td>@u.UnitNumber</td>
+                                    <td>@u.Type</td>
+                                    <td>@u.Floor</td>
+                                    <td>RM @u.RentAmount.ToString("N2")</td>
+                                    <td><span class="badge" style="background:@bg;color:@fg;">@u.Status</span></td>
+                                    <td class="text-end pe-3">
+                                        <a asp-action="EditUnit" asp-route-id="@u.UnitId" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
