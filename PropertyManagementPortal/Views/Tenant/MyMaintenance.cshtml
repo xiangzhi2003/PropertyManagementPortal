@@ -60,16 +60,16 @@ else
                         </td>
 
                         <td>
-                            @if(r.Status == "Pending")
+                            @if(r.Status == "Assigned")
                             {
                                 <span class="badge bg-warning text-dark">
-                                    Pending
+                                    Assigned
                                 </span>
                             }
-                            else if(r.Status == "Submitted")
+                            else if(r.Status == "Completed")
                             {
                                 <span class="badge bg-primary">
-                                    Submitted
+                                    Completed
                                 </span>
                             }
                             else if(r.Status == "InProgress")
@@ -81,7 +81,7 @@ else
                             else
                             {
                                 <span class="badge bg-success">
-                                    Completed
+                                    Submitted
                                 </span>
                             }
                         </td>
