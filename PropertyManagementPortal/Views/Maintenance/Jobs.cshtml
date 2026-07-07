@@ -18,6 +18,7 @@
                 <label class="form-label small text-muted mb-1">Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All statuses</option>
+                    <option value="Active" selected="@(Model.StatusFilter == "Active")">Active (Assigned + In Progress)</option>
                     @foreach (var s in new[] { "Assigned", "InProgress", "Completed" })
                     {
                         <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>

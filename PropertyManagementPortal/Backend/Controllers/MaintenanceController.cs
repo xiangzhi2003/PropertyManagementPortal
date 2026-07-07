@@ -113,7 +113,10 @@ namespace PropertyManagementPortal.Controllers
             // so unrelated rows never leave the database.
             var query = _db.MaintenanceRequests.Where(r => r.AssignedStaffId == userId);
 
-            if (!string.IsNullOrWhiteSpace(status))
+            // "Active" is a pseudo-filter covering the two in-flight statuses.
+            if (status == "Active")
+                query = query.Where(r => r.Status == "Assigned" || r.Status == "InProgress");
+            else if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(r => r.Status == status);
 
             var jobs = await query
@@ -206,6 +209,7 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> UpdateJob(UpdateJobViewModel vm)
         {
             var userId = _userManager.GetUserId(User);
+            var user = await _userManager.GetUserAsync(User);
 
             var request = await _db.MaintenanceRequests
                 .Include(r => r.Unit).ThenInclude(u => u.Property)
@@ -270,6 +274,16 @@ namespace PropertyManagementPortal.Controllers
 
             // 2) Advance the request itself.
             request.Status = next;
+
+            // 3) Notify the tenant, and the property manager, of the change.
+            //    Queued via the shared helper; committed in the SaveChanges below.
+            AddNotification(request.TenantId,
+                $"Your maintenance {request.Category} request at Unit {request.Unit.UnitNumber} is now {next}.");
+
+            var managerId = request.Unit.Property.ManagerId;
+            if (!string.IsNullOrEmpty(managerId))
+                AddNotification(managerId,
+                    $"{user!.FullName} updated {request.Category} maintenance at Unit {request.Unit.UnitNumber} to {next}.");
 
             await _db.SaveChangesAsync();
 
