@@ -236,6 +236,68 @@ footer a:hover {
     border-left-color: #3b82f6 !important;
 }
 
+/* ── Panel shell (sidebar + content) responsive ─
+   Opt-in: add class "admin-shell" to the sidebar+main flex container.
+   On phones the fixed sidebar becomes a full-width strip above the content. */
+@media (max-width: 767px) {
+    .admin-shell {
+        flex-direction: column;
+    }
+
+    .admin-shell .admin-sidebar {
+        width: 100%;
+        padding-top: 0;
+    }
+
+    .admin-shell .admin-sidebar-label {
+        display: none;
+    }
+
+    .admin-shell .admin-sidebar .nav {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+    }
+
+    .admin-shell .admin-nav-link {
+        padding: .75rem 1rem;
+    }
+}
+
+/* ── Simple CSS bar chart ────────────────────── */
+.bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: .75rem;
+}
+
+.bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.bar-value {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: .25rem;
+}
+
+.bar-fill {
+    width: 70%;
+    max-width: 46px;
+    background: #16a34a;              /* "Completed" green, matching the stat card */
+    border-radius: 4px 4px 0 0;      /* rounded data-end */
+}
+
+.bar-label {
+    font-size: .78rem;
+    color: var(--text-muted);
+    margin-top: .5rem;
+}
+
 /* ── Page header ─────────────────────────────── */
 .page-header {
     margin-bottom: 2rem;

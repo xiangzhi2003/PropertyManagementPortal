@@ -104,6 +104,37 @@
     </div>
 </div>
 
+<!-- Completed jobs chart -->
+<div class="card mb-4">
+    <div class="card-body p-4">
+        <h6 class="section-heading mb-1">Completed Jobs</h6>
+        <p class="text-muted mb-3" style="font-size:.82rem;">Jobs you completed over the last 6 months</p>
+        @{
+            var maxCount = Model.CompletedTrend.Count == 0 ? 0 : Model.CompletedTrend.Max(p => p.Count);
+            const int plotHeight = 150;
+        }
+        @if (maxCount == 0)
+        {
+            <p class="text-muted mb-0 py-4 text-center">No completed jobs in this period yet.</p>
+        }
+        else
+        {
+            <div class="bar-chart" style="height:@(plotHeight + 44)px;" role="img"
+                 aria-label="Completed jobs per month for the last six months">
+                @foreach (var p in Model.CompletedTrend)
+                {
+                    var barPx = (int)Math.Round(p.Count / (double)maxCount * plotHeight);
+                    <div class="bar-col" title="@p.Label: @p.Count completed">
+                        <div class="bar-value">@p.Count</div>
+                        <div class="bar-fill" style="height:@(barPx)px;"></div>
+                        <div class="bar-label">@p.Label</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
 <!-- Latest job -->
 <div class="card">
     <div class="card-body p-4">

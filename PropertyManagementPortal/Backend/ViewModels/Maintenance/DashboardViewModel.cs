@@ -22,5 +22,14 @@ namespace PropertyManagementPortal.ViewModels.Maintenance
         public string? LatestStatus { get; set; }
         public string? LatestPriority { get; set; }
         public DateTime LatestCreatedAt { get; set; }
+
+        // Completed-jobs trend for the bar chart (oldest → newest month)
+        public List<MonthlyCount> CompletedTrend { get; set; } = new();
+    }
+
+    public class MonthlyCount
+    {
+        public string Label { get; set; } = "";  // e.g. "Feb"
+        public int Count { get; set; }
     }
 }

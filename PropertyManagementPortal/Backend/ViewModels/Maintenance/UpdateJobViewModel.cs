@@ -8,7 +8,12 @@ namespace PropertyManagementPortal.ViewModels.Maintenance
     {
         public int RequestId { get; set; }
 
-        [Required(ErrorMessage = "Please add a note describing this update.")]
+        // The status the staffer is moving the job to. Validated against the current
+        // DB state in the POST — only forward moves are allowed (InProgress may be skipped).
+        [Required]
+        public string TargetStatus { get; set; } = "";
+
+        [Required(ErrorMessage = "Describe what has been done.")]
         [MaxLength(1000)]
         public string Notes { get; set; } = "";
 
