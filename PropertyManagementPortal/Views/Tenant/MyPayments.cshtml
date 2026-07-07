@@ -62,17 +62,11 @@ else
                         <td>
                             @if (p.Status != "Paid")
                             {
-                                <form asp-action="Checkout" method="post">
-                                    @Html.AntiForgeryToken()
-
-                                    <input type="hidden"
-                                        name="paymentId"
-                                        value="@p.PaymentId" />
-
-                                    <button class="btn btn-success btn-sm">
-                                        Pay Now
-                                    </button>
-                                </form>
+                                <button class="btn btn-primary btn-sm"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#paymentModal-@p.PaymentId">
+                                    Pay
+                                </button>
                             }
                             else
                             {
@@ -82,8 +76,95 @@ else
                     </tr>
                 }
                 </tbody>
-
             </table>
+
+                @foreach (var p in Model)
+                {
+                    if (p.Status != "Paid")
+                    {
+                        <div class="modal fade"
+                            id="paymentModal-@p.PaymentId"
+                            tabindex="-1">
+
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">
+                                            Confirm Payment
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close"
+                                                data-bs-dismiss="modal">
+                                        </button>
+                                    </div>
+
+                                    <div class="modal-body">
+
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Property</th>
+                                                <td>@p.PropertyName</td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Unit</th>
+                                                <td>@p.UnitNumber</td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Amount</th>
+                                                <td>
+                                                    <strong>
+                                                        RM @p.Amount.ToString("N2")
+                                                    </strong>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <th>Due Date</th>
+                                                <td>
+                                                    @p.DueDate.ToString("dd MMM yyyy")
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <div class="alert alert-info">
+                                            You will be redirected to Stripe to complete payment.
+                                        </div>
+
+                                    </div>
+
+                                    <div class="modal-footer">
+
+                                        <button type="button"
+                                                class="btn btn-secondary"
+                                                data-bs-dismiss="modal">
+                                            Cancel
+                                        </button>
+
+                                        <form asp-action="Checkout" method="post">
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                name="paymentId"
+                                                value="@p.PaymentId" />
+
+                                            <button class="btn btn-success">
+                                                Proceed to Stripe
+                                            </button>
+                                        </form>
+
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    }
+                }
+
 
         </div>
     </div>

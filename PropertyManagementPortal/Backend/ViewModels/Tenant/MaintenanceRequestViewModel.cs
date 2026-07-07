@@ -11,9 +11,9 @@ namespace PropertyManagementPortal.ViewModels.Tenant
         [Required]
         public string Category { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(1000)]
         public string Description { get; set; } = string.Empty;
+
+        public string Status { get; set; } = string.Empty;
 
         public List<SelectListItem> Units { get; set; } = new();
     }

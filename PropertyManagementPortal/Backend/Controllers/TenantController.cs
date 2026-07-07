@@ -15,7 +15,7 @@ namespace PropertyManagementPortal.Controllers
     public class TenantController : AppControllerBase
     {
         private readonly IConfiguration _configuration;
-        
+
         public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration configuration)
         : base(db, userManager)
         {
@@ -37,7 +37,7 @@ namespace PropertyManagementPortal.Controllers
             var currentTenancy = await _db.Tenancies
                 .Include(t => t.Unit)
                 .ThenInclude(u => u.Property)
-                .Where(t => t.TenantId == user.Id && t.Status == "Approved")
+                .Where(t => t.TenantId == user.Id && t.Status == "Approved" && t.Payments.Any(p => p.Status == "Paid"))
                 .ToListAsync();
             var unitCount = await _db.Units
                 .CountAsync(u => u.Status == "Vacant");
@@ -126,7 +126,7 @@ namespace PropertyManagementPortal.Controllers
                 UnitNumber = unit.UnitNumber,
                 RentAmount = unit.RentAmount,
                 Floor = unit.Floor,
-                Description = unit.Description ?? "",
+                Description = unit.Description ?? "No description",
                 StartDate = DateTime.Today,
                 EndDate = DateTime.Today
             };
@@ -195,6 +195,7 @@ namespace PropertyManagementPortal.Controllers
             var applications = await _db.Tenancies
                 .Include(a => a.Unit)
                 .ThenInclude(u => u.Property)
+                .Include(t => t.Payments)
                 .Where(a => a.TenantId == user.Id)
                 .ToListAsync();
 
