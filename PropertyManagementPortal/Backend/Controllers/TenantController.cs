@@ -12,14 +12,9 @@ namespace PropertyManagementPortal.Controllers
     [Authorize(Roles = "Tenant")]
     public class TenantController : AppControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<ApplicationUser> _userManager;
-
         public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
         : base(db, userManager)
         {
-            _db = db;
-            _userManager = userManager;
         }
 
         public async Task<IActionResult> Dashboard()
@@ -116,7 +111,7 @@ namespace PropertyManagementPortal.Controllers
                 .FirstOrDefaultAsync(u => u.UnitId == unitId);
 
             if (unit == null)
-                return NotFound();
+                return Challenge();
 
             var vm = new ApplyUnitViewModel
             {
@@ -125,7 +120,7 @@ namespace PropertyManagementPortal.Controllers
                 UnitNumber = unit.UnitNumber,
                 RentAmount = unit.RentAmount,
                 Floor = unit.Floor,
-                Description = unit.Description,
+                Description = unit.Description ?? "",
                 StartDate = DateTime.Today,
                 EndDate = DateTime.Today.AddDays(1)
             };
@@ -135,7 +130,7 @@ namespace PropertyManagementPortal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Apply(ApplyUnitViewModel vm)
+        public IActionResult Apply(ApplyUnitViewModel vm)
         {
             if (!ModelState.IsValid)
                 return View(vm);
@@ -186,6 +181,11 @@ namespace PropertyManagementPortal.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var applications = await _db.Tenancies
                 .Include(a => a.Unit)
                 .ThenInclude(u => u.Property)
@@ -198,6 +198,10 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> Maintenance()
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
 
             var tenancyUnits = await _db.Tenancies
                 .Include(t => t.Unit)
@@ -228,6 +232,11 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> Maintenance(MaintenanceRequestViewModel vm)
         {
             var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
 
             if (!ModelState.IsValid)
             {
@@ -267,6 +276,11 @@ namespace PropertyManagementPortal.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var requests = await _db.MaintenanceRequests
                 .Include(m => m.Unit)
                 .ThenInclude(u => u.Property)
@@ -290,6 +304,11 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> MyPayments()
         {
             var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
 
             var payments = await _db.Payments
                 .Include(p => p.Tenancy)
