@@ -41,6 +41,27 @@ namespace PropertyManagementPortal.Controllers
                               && u.StatusUpdate == "Completed"
                               && u.UpdatedAt >= monthStart);
 
+            // Completed-jobs trend: count of Completed updates per month over the
+            // last 6 months (including empty months), oldest first.
+            var trendStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+            var completedDates = await _db.MaintenanceUpdates
+                .Where(u => u.StaffId == userId
+                         && u.StatusUpdate == "Completed"
+                         && u.UpdatedAt >= trendStart)
+                .Select(u => u.UpdatedAt)
+                .ToListAsync();
+
+            var completedTrend = new List<MonthlyCount>();
+            for (var i = 0; i < 6; i++)
+            {
+                var m = trendStart.AddMonths(i);
+                completedTrend.Add(new MonthlyCount
+                {
+                    Label = m.ToString("MMM"),
+                    Count = completedDates.Count(d => d.Year == m.Year && d.Month == m.Month)
+                });
+            }
+
             // Latest still-open job (most recently created), with unit + property names.
             var latest = await myRequests
                 .Where(r => r.Status != "Completed")
@@ -63,7 +84,8 @@ namespace PropertyManagementPortal.Controllers
                 AssignedCount = assignedCount,
                 InProgressCount = inProgressCount,
                 CompletedCount = completedCount,
-                CompletedThisMonth = completedThisMonth
+                CompletedThisMonth = completedThisMonth,
+                CompletedTrend = completedTrend
             };
 
             if (latest != null)

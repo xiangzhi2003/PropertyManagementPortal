@@ -263,6 +263,41 @@ footer a:hover {
     }
 }
 
+/* ── Simple CSS bar chart ────────────────────── */
+.bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: .75rem;
+}
+
+.bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.bar-value {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: .25rem;
+}
+
+.bar-fill {
+    width: 70%;
+    max-width: 46px;
+    background: #16a34a;              /* "Completed" green, matching the stat card */
+    border-radius: 4px 4px 0 0;      /* rounded data-end */
+}
+
+.bar-label {
+    font-size: .78rem;
+    color: var(--text-muted);
+    margin-top: .5rem;
+}
+
 /* ── Page header ─────────────────────────────── */
 .page-header {
     margin-bottom: 2rem;
