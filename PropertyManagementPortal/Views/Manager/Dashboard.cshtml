@@ -43,7 +43,7 @@
 
     <!-- Pending applications -->
     <div class="col-sm-6 col-xl-3">
-        <a asp-action="Applications" class="text-decoration-none">
+        <a asp-action="Applications" asp-route-status="Pending" class="text-decoration-none">
             <div class="card stat-card" style="border-left:4px solid #d97706;">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -64,13 +64,13 @@
 
     <!-- Rent dues -->
     <div class="col-sm-6 col-xl-3">
-        <a asp-action="Payments" class="text-decoration-none">
+        <a asp-action="Payments" asp-route-status="Overdue" class="text-decoration-none">
             <div class="card stat-card" style="border-left:4px solid #dc2626;">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <p class="stat-label">Outstanding Rent</p>
-                        <div class="stat-number" style="color:#dc2626;">@Model.PendingPayments</div>
-                        <p class="stat-sub">@Model.OverduePayments overdue &middot; pending payments</p>
+                        <p class="stat-label">Overdue Rent</p>
+                        <div class="stat-number" style="color:#dc2626;">@Model.OverduePayments</div>
+                        <p class="stat-sub">@Model.PendingPayments pending &middot; overdue payments</p>
                     </div>
                     <div class="stat-icon" style="background:#fee2e2;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#dc2626" viewBox="0 0 16 16">
@@ -84,7 +84,7 @@
 
     <!-- Unassigned maintenance -->
     <div class="col-sm-6 col-xl-3">
-        <a asp-action="Maintenance" class="text-decoration-none">
+        <a asp-action="Maintenance" asp-route-status="Submitted" class="text-decoration-none">
             <div class="card stat-card" style="border-left:4px solid #7c3aed;">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
