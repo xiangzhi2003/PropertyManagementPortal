@@ -27,6 +27,7 @@ else
                         <th>Due Date</th>
                         <th>Payment Date</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
 
@@ -36,11 +37,13 @@ else
                     <tr>
                         <td>@p.PropertyName</td>
                         <td>@p.UnitNumber</td>
-                        <td>RM @p.Amount</td>
+                        <td>RM @p.Amount.ToString("N2")</td>
                         <td>@p.DueDate.ToString("dd MMM yyyy")</td>
+
                         <td>
                             @(p.PaymentDate?.ToString("dd MMM yyyy") ?? "-")
                         </td>
+
                         <td>
                             @if (p.Status == "Paid")
                             {
@@ -53,6 +56,27 @@ else
                             else
                             {
                                 <span class="badge bg-warning text-dark">Pending</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (p.Status != "Paid")
+                            {
+                                <form asp-action="Checkout" method="post">
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                        name="paymentId"
+                                        value="@p.PaymentId" />
+
+                                    <button class="btn btn-success btn-sm">
+                                        Pay Now
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Completed</span>
                             }
                         </td>
                     </tr>
