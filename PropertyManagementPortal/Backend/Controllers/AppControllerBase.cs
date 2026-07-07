@@ -21,6 +21,18 @@ namespace PropertyManagementPortal.Controllers
             _userManager = userManager;
         }
 
+        // Queues a notification for a user. Does NOT save — the caller commits it
+        // inside its own SaveChangesAsync so it shares that action's transaction.
+        // (protected, so it is never routable as an action.)
+        protected void AddNotification(string userId, string message)
+        {
+            _db.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                Message = message
+            });
+        }
+
         // GET /{Role}/Notifications — the inherited action resolves its view by the
         // runtime controller name, so each role renders under its own layout.
         public async Task<IActionResult> Notifications(string? readFilter)
