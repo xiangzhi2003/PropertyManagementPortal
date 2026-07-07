@@ -236,6 +236,33 @@ footer a:hover {
     border-left-color: #3b82f6 !important;
 }
 
+/* ── Panel shell (sidebar + content) responsive ─
+   Opt-in: add class "admin-shell" to the sidebar+main flex container.
+   On phones the fixed sidebar becomes a full-width strip above the content. */
+@media (max-width: 767px) {
+    .admin-shell {
+        flex-direction: column;
+    }
+
+    .admin-shell .admin-sidebar {
+        width: 100%;
+        padding-top: 0;
+    }
+
+    .admin-shell .admin-sidebar-label {
+        display: none;
+    }
+
+    .admin-shell .admin-sidebar .nav {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+    }
+
+    .admin-shell .admin-nav-link {
+        padding: .75rem 1rem;
+    }
+}
+
 /* ── Page header ─────────────────────────────── */
 .page-header {
     margin-bottom: 2rem;
