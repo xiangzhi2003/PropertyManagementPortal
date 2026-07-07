@@ -317,12 +317,11 @@ namespace PropertyManagementPortal.Controllers
  
             if (tenancy.EndDate >= tenancy.StartDate)
             {
-                // Normalise to the 1st of the start month — rent is charged early each month.
-                // DateTimeKind.Utc is REQUIRED for PostgreSQL/Npgsql timestamptz columns.
-                firstDue = new DateTime(tenancy.StartDate.Year, tenancy.StartDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var lastMonth = new DateTime(tenancy.EndDate.Year, tenancy.EndDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
- 
-                for (var due = firstDue; due <= lastMonth; due = due.AddMonths(1))
+                // First payment is due on the start date itself; then the same day each month.
+                // DateTimeKind.Utc is required for PostgreSQL timestamptz.
+                firstDue = DateTime.SpecifyKind(tenancy.StartDate.Date, DateTimeKind.Utc);
+
+                for (var due = firstDue; due <= tenancy.EndDate.Date; due = due.AddMonths(1))
                 {
                     _db.Payments.Add(new Payment
                     {
@@ -455,30 +454,39 @@ namespace PropertyManagementPortal.Controllers
  
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> MarkPaid(int id)
+        public async Task<IActionResult> MarkPaid(int id, DateTime paymentDate)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
- 
+
             var payment = await _db.Payments
                 .FirstOrDefaultAsync(p => p.PaymentId == id && propertyIds.Contains(p.Tenancy.Unit.PropertyId));
- 
+
             if (payment == null)
             {
                 TempData["Error"] = "Payment not found or not in your properties.";
                 return RedirectToAction(nameof(Payments));
             }
- 
+
             if (payment.Status == "Paid")
             {
                 TempData["Error"] = "This payment is already marked as paid.";
                 return RedirectToAction(nameof(Payments));
             }
- 
+
+            // Guard: don't allow a future payment date.
+            var today = DateTime.UtcNow.Date;
+            if (paymentDate.Date > today)
+            {
+                TempData["Error"] = "Payment date cannot be in the future.";
+                return RedirectToAction(nameof(Payments));
+            }
+
             payment.Status = "Paid";
-            payment.PaymentDate = DateTime.UtcNow;
+            // Store as UTC — required for PostgreSQL timestamptz columns.
+            payment.PaymentDate = DateTime.SpecifyKind(paymentDate.Date, DateTimeKind.Utc);
             await _db.SaveChangesAsync();
- 
-            TempData["Success"] = "Payment marked as received.";
+
+            TempData["Success"] = $"Payment recorded as received on {paymentDate:dd MMM yyyy}.";
             return RedirectToAction(nameof(Payments));
         }
  
