@@ -42,7 +42,7 @@
                 <div class="d-flex justify-content-between align-items-start">
 
                     <div>
-                        <p class="stat-label">Browse Units</p>
+                        <p class="stat-label">Units</p>
 
                         <div class="stat-number text-primary">
                             @Model.UnitCount
@@ -149,8 +149,8 @@
                             Outstanding
                         </p>
 
-                        <div class="stat-number text-danger">
-                            RM @Model.OutstandingPayments
+                        <div class="fs-4 fw-bold text-danger">
+                            RM @Model.OutstandingPayments.ToString("N2")
                         </div>
 
                         <p class="stat-sub">
