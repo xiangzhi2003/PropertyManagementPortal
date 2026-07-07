@@ -5,6 +5,7 @@ namespace PropertyManagementPortal.ViewModels.Tenant
         public string PropertyName { get; set; } = "";
         public string UnitNumber { get; set; } = "";
         public decimal Amount { get; set; }
+        public int PaymentId { get; set; }
         public DateTime? PaymentDate { get; set; }
         public DateTime DueDate { get; set; }
         public string Status { get; set; } = "";
