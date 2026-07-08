@@ -1,6 +1,6 @@
 namespace PropertyManagementPortal.ViewModels.Manager
 {
-    public class ApplicationListViewModel
+    public class ApplicationListViewModel : PaginatedViewModel
     {
         public List<ApplicationRowViewModel> Applications { get; set; } = new();
         public string? StatusFilter { get; set; }

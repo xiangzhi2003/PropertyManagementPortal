@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
  
 namespace PropertyManagementPortal.ViewModels.Manager
 {
-    public class UnitListViewModel
+    public class UnitListViewModel : PaginatedViewModel
     {
         public List<UnitRowViewModel> Units { get; set; } = new();
  
