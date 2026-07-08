@@ -75,7 +75,7 @@
                     id="endDate"
                     type="date"
                     class="form-control"
-                    min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+                    min="@DateTime.Today.AddMonths(1).ToString("yyyy-MM-dd")" />
 
                 <span asp-validation-for="EndDate"
                     class="text-danger"></span>
@@ -113,7 +113,7 @@
 
             let selectedDate = new Date(this.value);
 
-            selectedDate.setDate(selectedDate.getDate() + 1);
+            selectedDate.setMonth(selectedDate.getMonth() + 1);
 
             let minEndDate = selectedDate.toISOString().split("T")[0];
 
