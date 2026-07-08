@@ -173,7 +173,7 @@ namespace PropertyManagementPortal.Controllers
             {
                 UnitId = vm.UnitId,
                 TenantId = user.Id,
-                StartDate = vm.StartDate.ToUniversalTime(),
+                StartDate = DateTime.UtcNow.Date,
                 EndDate = vm.EndDate.ToUniversalTime(),
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow
@@ -327,11 +327,13 @@ namespace PropertyManagementPortal.Controllers
                 return Challenge();
             }
 
+            var today = DateTime.UtcNow.Date;
+
             var payments = await _db.Payments
                 .Include(p => p.Tenancy)
                     .ThenInclude(t => t.Unit)
                         .ThenInclude(u => u.Property)
-                .Where(p => p.Tenancy.TenantId == user.Id)
+                .Where(p => p.Tenancy.TenantId == user.Id && p.DueDate.AddDays(-7) <= today)
                 .OrderByDescending(p => p.DueDate)
                 .Select(p => new PaymentViewModel
                 {
@@ -347,7 +349,6 @@ namespace PropertyManagementPortal.Controllers
 
             // Overdue is derived, not stored: a Pending payment past its due date
             // displays as overdue. Mirrors ManagerController's derive-on-read logic.
-            var today = DateTime.UtcNow.Date;
             foreach (var p in payments)
             {
                 if (p.Status == "Pending" && p.DueDate.Date < today)
