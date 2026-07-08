@@ -3,8 +3,11 @@
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-8.0-512BD4?logo=dotnet)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-NeonDB-336791?logo=postgresql)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap)
+![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs)
 
 A centralized web platform for managing properties, tenants, maintenance requests, and payments. Built as a university assignment for **CT071-3-3-DDAC** (Designing and Developing ASP.NET Core Applications).
+
+All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff — are fully built.
 
 ---
 
@@ -12,10 +15,10 @@ A centralized web platform for managing properties, tenants, maintenance request
 
 ### All Users
 - Register with email/password or Google OAuth — automatically assigned **Tenant** role
-- Login with email/password or Google OAuth
+- Login with email/password or Google OAuth — lands on the Home page with a "Welcome back, {name} [{role}]" message and a role-appropriate "Go to Dashboard" button
 - My Profile — edit full name and phone number; view role, account status, member since
-- Change Password
-- Role-based dashboard routing after login
+- Change Password / Forgot Password (reset link is shown directly on-screen, since this project has no real email sender configured)
+- In-app notifications (bell icon in the header) — role-relevant events push a notification with an unread badge
 
 ---
 
@@ -23,54 +26,62 @@ A centralized web platform for managing properties, tenants, maintenance request
 
 **Dashboard**
 - Stat cards: Total Users, Total Properties, Pending Maintenance, Overdue Payments — each links to the relevant page
-- Welcome message with admin name and recent activity feed
+- Occupancy Overview — overall occupancy stats plus a per-property breakdown table with progress bars
+- Payment Summary — Chart.js doughnut chart (Paid/Pending/Overdue) with interactive hover tooltips, a drill-down table of every unpaid payment (tenant, property/unit, manager in charge, amount, due date, days overdue) with clickable links to the tenant's/manager's profile, and a CSV export
+- Maintenance Summary — Chart.js bar chart by status, a drill-down table of every open request (tenant, manager, assigned staff, category, status) with clickable profile links
+- Revenue Trend & Occupancy Trend — two Chart.js line charts covering the last 6 months
+- Recent Activity feed with color-coded badges by action type
 
 **Manage Users**
-- Table view: name, email, phone, role badge, status badge
+- Table view: avatar initials, name, email, phone, role badge, status badge, joined date
 - Search and filter by name, email, role, or status
-- Create new user (any role)
-- Edit user details and role assignment (email is read-only)
-- View full user detail page
-- Toggle activate / deactivate (Admin accounts protected)
-- Delete user (blocked if user has active tenancies or maintenance requests)
+- Create new user (any role), edit user details/role, view full user detail page (outstanding balance + account activity history)
+- Delete user (blocked if Admin, or has active tenancies/maintenance requests)
+- CSV export
 
 **Manage Properties**
-- Table view: name, address, type, assigned manager, unit count, status
+- Table view: name, address, type, assigned manager, inline occupancy bar, status
 - Search and filter by name, type, or status
-- Add new property and assign to a Property Manager
-- Edit property details
-- View property detail page with units list
-- Toggle Active / Inactive status
-
-**System Reports**
-- Occupancy Report — total units, occupied vs vacant, occupancy rate %
-- Payment Summary — total, paid, pending, overdue counts
-- Maintenance Summary — submitted, assigned, in-progress, completed counts
+- Add/edit property, view property detail page (units list with current tenant name, occupancy summary)
+- CSV export
 
 **Activity Log**
-- Paginated audit trail of all system actions — who, what, when
+- Paginated, searchable, filterable audit trail with color-coded action badges
+- CSV export
 
 **Role Requests**
-- Tenants can request to become a Property Manager or Maintenance Staff
-- Pending request count shown as a badge in the admin sidebar
-- Approve — instantly changes the user's role
-- Reject — marks request as rejected with an optional reason note
+- Pending/Approved/Rejected stat cards
+- Approve — instantly changes the user's role; Reject — with an optional reason note
+
+**Global Search**
+- Header search box — searches Users, Properties, and unpaid Payments at once, with click-through to each result's detail page
 
 ---
 
-### Tenant 🏠 *(partial)*
+### Property Manager ✅
 
-**Role Upgrade Request**
-- Dashboard shows two cards: request Property Manager or Maintenance Staff role
-- Pending requests show a status banner — upgrade cards hidden until resolved
-- Rejected requests show the admin's reason — user can re-submit
-
-*Full tenant features (tenancy view, maintenance requests, payment history) — coming soon*
+- **Dashboard** — managed property/unit counts, pending applications, pending/overdue payments, unassigned maintenance, an "attention needed" chart
+- **Manage Units** — list/filter units across managed properties, add/edit units
+- **Applications** — approve/reject tenant applications (approval auto-generates the monthly rent schedule and notifies the tenant)
+- **Rent Payments** — filterable list, mark-as-paid with a date picker (rejects future dates), Chart.js status/amount charts
+- **Maintenance** — assign requests to staff with priority and notes, view job history
 
 ---
 
-### Property Manager 🏢 *(stub — coming soon)*
-### Maintenance Staff 🔧 *(stub — coming soon)*
+### Tenant ✅
+
+- **Dashboard** — role upgrade request cards, current tenancies, outstanding payments summary
+- **Browse Units / Apply** — submit a rental application, track its status
+- **My Payments** — payment history, pay via Stripe checkout
+- **My Maintenance** — submit and track maintenance requests
+
+---
+
+### Maintenance Staff ✅
+
+- **Dashboard** — assigned job counts by status, latest job, completed-this-month, 6-month completed-jobs trend chart
+- **Assigned Jobs** — filterable list
+- **Job Details** — update status (Assigned → In Progress → Completed, forward-only), upload repair evidence photo (required to mark Completed)
 
 ---
 
@@ -82,7 +93,8 @@ A centralized web platform for managing properties, tenants, maintenance request
 | ORM | Entity Framework Core 8 |
 | Database | PostgreSQL (NeonDB serverless) via Npgsql |
 | Authentication | ASP.NET Core Identity + Google OAuth 2.0 |
-| UI | Bootstrap 5, Inter font, custom CSS |
+| Payments | Stripe.net |
+| UI | Bootstrap 5, Chart.js 4, Inter font, custom CSS |
 
 ---
 
@@ -101,7 +113,7 @@ A centralized web platform for managing properties, tenants, maintenance request
    cd PropertyManagementPortal/PropertyManagementPortal
    ```
 
-2. **Create `appsettings.json`** in the `PropertyManagementPortal/` project folder (gitignored — never committed):
+2. **Create `appsettings.json`** in the `PropertyManagementPortal/` project folder (gitignored — never committed). Copy `appsettings.example.json` as a starting template:
    ```json
    {
      "ConnectionStrings": {
@@ -129,7 +141,14 @@ A centralized web platform for managing properties, tenants, maintenance request
    ```bash
    dotnet run
    ```
-   The app seeds all roles on first startup. Create an Admin user via the Register page then assign the Admin role via the database or a seed script.
+   The app seeds the four roles on first startup, but not an Admin user. Register a normal account first, then promote it to Admin directly in the database:
+   ```sql
+   INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
+   SELECT u."Id", r."Id"
+   FROM "AspNetUsers" u, "AspNetRoles" r
+   WHERE u."NormalizedEmail" = UPPER('your@email.com') AND r."Name" = 'Admin';
+   ```
+   Log out and back in afterward — the role is read into your session at login time.
 
 ---
 
@@ -138,45 +157,32 @@ A centralized web platform for managing properties, tenants, maintenance request
 This project follows the **MVC (Model-View-Controller)** pattern. Every feature is split into three parts:
 
 ### Areas (Login & Registration)
-`Areas/Identity/` contains all the login, register, and account management pages. These are provided by ASP.NET Core Identity (a built-in auth library) and we customized them. Think of Areas as a sub-application — it has its own pages, layouts, and logic, separate from the main MVC structure.
+`Areas/Identity/` contains all the login, register, and account management pages, provided by ASP.NET Core Identity and customized to match the site's design. Think of Areas as a sub-application — its own pages, layouts, and logic, separate from the main MVC structure. Note: this project has no real email sender configured, so the Register and Forgot Password confirmation pages show the confirmation/reset link directly on-screen instead of emailing it.
 
-### Models (`Models/`)
-Models represent the **database tables**. Each `.cs` file in `Models/` maps directly to a table in PostgreSQL via Entity Framework Core. You define the fields (columns) here, and EF Core creates/updates the actual table when you run `dotnet ef database update`.
+### Models (`Database/Models/`)
+Models represent the **database tables**. Each `.cs` file maps directly to a table in PostgreSQL via Entity Framework Core.
 
 Example: `Unit.cs` has fields `UnitNumber`, `Type`, `RentAmount`, `Floor`, `Status` → these become columns in the `Units` table.
 
-### Controllers (`Controllers/`)
-Controllers are the **brain**. When a user clicks a link or submits a form, a controller action runs. It:
-1. Reads data from the database (via `ApplicationDbContext`)
-2. Packages the data into a ViewModel (or passes a Model directly)
-3. Returns a View to display
+### Controllers (`Backend/Controllers/`)
+Controllers are the **brain**. When a user clicks a link or submits a form, a controller action runs, queries the DB, packages the data into a ViewModel, and returns a View.
 
-Example: User visits `/Admin/Users` → `AdminController.Users()` runs → queries the DB for all users → passes the list to `Views/Admin/Users.cshtml`.
-
-Each role has its own controller:
-- `AdminController.cs` — handles all admin pages
-- `TenantController.cs` — handles tenant pages
-- `ManagerController.cs` — handles property manager pages
-- `MaintenanceController.cs` — handles maintenance staff pages
+Each role has its own controller, and all four inherit a shared `AppControllerBase` (holds the DB context, user manager, and the shared `Notifications`/`MarkRead` actions + `AddNotification` helper):
+- `AdminController.cs` — all admin pages
+- `TenantController.cs` — tenant pages
+- `ManagerController.cs` — property manager pages
+- `MaintenanceController.cs` — maintenance staff pages
 
 Controllers are protected with `[Authorize(Roles = "RoleName")]` so only the right role can access them.
 
 ### Views (`Views/`)
-Views are the **HTML pages** the user sees. They receive data from the controller and render it. Views use Razor syntax (`.cshtml`) which is HTML mixed with C# `@` expressions.
+The HTML pages the user sees, written in Razor syntax (`.cshtml`). Each role has its own subfolder (`Views/Admin/`, `Views/Tenant/`, `Views/Manager/`, `Views/Maintenance/`), plus `Views/Shared/` for layouts/partials used by all roles.
 
-Each role has its own subfolder:
-- `Views/Admin/` — all admin pages
-- `Views/Tenant/` — tenant pages
-- `Views/Manager/` — property manager pages
-- `Views/Maintenance/` — maintenance staff pages
-- `Views/Shared/` — shared layouts and partials used by all roles
+### ViewModels (`Backend/ViewModels/`)
+Data containers made for a specific view, so the controller only passes the fields that page needs instead of a raw 20+ field database model. Organized per role: `ViewModels/Admin/`, `ViewModels/Manager/`, `ViewModels/Tenant/`, `ViewModels/Maintenance/`, plus `ViewModels/Shared/` for the notifications view model used by every role.
 
-### ViewModels (`ViewModels/`)
-ViewModels are **data containers made for a specific view**. Instead of passing a raw database model (which may have 20+ fields), the controller creates a ViewModel with only the fields that page needs.
-
-Example: `EditUserViewModel` has `FullName`, `PhoneNumber`, `Role`, `CreatedAt` — exactly what the Edit User page needs. The raw `ApplicationUser` DB model also has password hashes, security stamps, and other Identity fields the view should never touch.
-
-Only the Admin panel uses ViewModels right now (it's the most complex). Other roles can pass models directly for simpler pages.
+### ViewComponents (`Backend/ViewComponents/`)
+`NotificationBellViewComponent` — a self-contained component dropped into every role layout's header that renders the unread-notification bell icon.
 
 ### The Full Flow
 
@@ -196,12 +202,12 @@ View (.cshtml) renders the HTML using the ViewModel data
 HTML page sent back to the user's browser
 ```
 
-### Data Layer (`Data/`)
-- `ApplicationDbContext.cs` — the EF Core database context. It holds a `DbSet<>` for every model (table). Controllers inject this to read/write the DB.
-- `SeedData.cs` — runs on startup to create the four roles (Admin, PropertyManager, Tenant, MaintenanceStaff) if they don't exist yet.
+### Data Layer (`Database/Data/`)
+- `ApplicationDbContext.cs` — the EF Core database context, holds a `DbSet<>` for every model
+- `SeedData.cs` — runs on startup to create the four roles if they don't exist yet (does **not** create an Admin user — see Setup above)
 
-### Migrations (`Migrations/`)
-Every time a Model is added or changed, a migration is created with `dotnet ef migrations add <Name>`. Migrations are the history of DB schema changes. Run `dotnet ef database update` to apply them to the actual database. **Never edit migration files manually.**
+### Migrations (`Database/Migrations/`)
+Every time a Model is added or changed, a migration is created with `dotnet ef migrations add <Name>`. Run `dotnet ef database update` to apply. **Never edit migration files manually.**
 
 ---
 
@@ -215,97 +221,69 @@ PropertyManagementPortal/                        ← git repo / solution root
 └── PropertyManagementPortal/                    ← .NET web project
     │
     │  # ── BACKEND ────────────────────────────────────────────────────────
-    │  # Business logic. Handles HTTP requests, talks to DB, decides what to show.
-    │
     ├── Backend/
     │   ├── Controllers/
-    │   │   ├── HomeController.cs                role-based redirect after login
-    │   │   ├── AdminController.cs               all admin actions (users, properties, units, reports)
-    │   │   ├── TenantController.cs              tenant dashboard + role upgrade requests
-    │   │   ├── ManagerController.cs             property manager panel (stub)
-    │   │   └── MaintenanceController.cs         maintenance staff panel (stub)
+    │   │   ├── HomeController.cs                landing page (role-aware welcome message)
+    │   │   ├── AppControllerBase.cs              shared base: notifications, DB/UserManager access
+    │   │   ├── AdminController.cs                all admin actions
+    │   │   ├── TenantController.cs                tenant dashboard, applications, payments, maintenance
+    │   │   ├── ManagerController.cs               property manager panel
+    │   │   └── MaintenanceController.cs          maintenance staff panel
     │   │
-    │   └── ViewModels/Admin/                    data shapes passed from controller to view
-    │       ├── DashboardViewModel.cs
-    │       ├── UserListViewModel.cs
-    │       ├── CreateUserViewModel.cs
-    │       ├── EditUserViewModel.cs
-    │       ├── PropertyFormViewModel.cs
-    │       └── ReportsViewModel.cs
+    │   ├── ViewComponents/
+    │   │   └── NotificationBellViewComponent.cs  header bell icon, used by every role layout
+    │   │
+    │   └── ViewModels/
+    │       ├── Admin/                            DashboardViewModel, UserListViewModel, GlobalSearchViewModel, ...
+    │       ├── Manager/
+    │       ├── Tenant/
+    │       ├── Maintenance/
+    │       └── Shared/                           NotificationsViewModel
     │
-    ├── Program.cs                               app startup, middleware, DI, auth config
+    ├── Program.cs                                app startup, middleware, DI, auth config
     │
     │  # ── DATABASE ───────────────────────────────────────────────────────
-    │  # Data layer. Defines DB tables and connects them to PostgreSQL via EF Core.
-    │
     ├── Database/
     │   ├── Models/                              database table definitions
     │   │   ├── ApplicationUser.cs               user account (extends IdentityUser)
-    │   │   ├── Property.cs                      property record
-    │   │   ├── Unit.cs                          unit within a property
-    │   │   ├── Tenancy.cs                       lease linking a tenant to a unit
-    │   │   ├── Payment.cs                       rent payment record
-    │   │   ├── MaintenanceRequest.cs            maintenance job
-    │   │   ├── MaintenanceUpdate.cs             status update / note on a job
-    │   │   ├── Notification.cs                  in-app notifications
-    │   │   ├── ActivityLog.cs                   admin audit trail
-    │   │   └── RoleRequest.cs                   tenant role upgrade request
+    │   │   ├── Property.cs / Unit.cs / Tenancy.cs / Payment.cs
+    │   │   ├── MaintenanceRequest.cs / MaintenanceUpdate.cs
+    │   │   ├── Notification.cs
+    │   │   ├── ActivityLog.cs
+    │   │   └── RoleRequest.cs
     │   │
     │   ├── Data/
-    │   │   ├── ApplicationDbContext.cs          EF Core DbContext — connects models to DB
-    │   │   └── SeedData.cs                     seeds the 4 roles on first startup
+    │   │   ├── ApplicationDbContext.cs
+    │   │   └── SeedData.cs
     │   │
-    │   └── Migrations/                          auto-generated DB schema history
-    │                                            ⚠ never edit these files manually
+    │   └── Migrations/                          ⚠ never edit these files manually
     │
     │  # ── FRONTEND ───────────────────────────────────────────────────────
-    │  # Presentation layer. HTML pages and static files the browser receives.
-    │
-    ├── Views/                                   Razor .cshtml templates
-    │   ├── Admin/
-    │   │   ├── _AdminLayout.cshtml              sidebar layout used by all admin pages
-    │   │   ├── Dashboard.cshtml
-    │   │   ├── Users.cshtml
-    │   │   ├── CreateUser.cshtml
-    │   │   ├── EditUser.cshtml
-    │   │   ├── ViewUser.cshtml
-    │   │   ├── Properties.cshtml
-    │   │   ├── AddProperty.cshtml
-    │   │   ├── EditProperty.cshtml
-    │   │   ├── ViewProperty.cshtml              includes add / edit / delete unit
-    │   │   ├── EditUnit.cshtml
-    │   │   ├── Reports.cshtml
-    │   │   ├── ActivityLog.cshtml
-    │   │   └── RoleRequests.cshtml
-    │   ├── Tenant/
-    │   │   └── Dashboard.cshtml                role upgrade request UI
-    │   ├── Manager/
-    │   │   └── Dashboard.cshtml                stub — coming soon
-    │   ├── Maintenance/
-    │   │   └── Dashboard.cshtml                stub — coming soon
+    ├── Views/
+    │   ├── Admin/                                Dashboard, Users, Properties, ActivityLog, RoleRequests, GlobalSearch, Notifications, ...
+    │   ├── Manager/                              Dashboard, Units, Applications, Payments, Maintenance
+    │   ├── Tenant/                                Dashboard, Apply, MyApplications, MyPayments, MyMaintenance, Notifications
+    │   ├── Maintenance/                          Dashboard, Jobs, JobDetails, Notifications
     │   ├── Home/
-    │   │   └── Index.cshtml                    landing page + role-based redirect
+    │   │   └── Index.cshtml                     landing page — welcome message + role-based dashboard link
     │   └── Shared/
-    │       ├── _Layout.cshtml                  public layout (login, register, home)
-    │       └── _LoginPartial.cshtml            login / logout nav buttons
+    │       ├── _Layout.cshtml
+    │       ├── _LoginPartial.cshtml
+    │       └── _NotificationList.cshtml         shared notifications page partial used by every role
     │
-    ├── wwwroot/                                 static files served directly to browser
+    ├── wwwroot/
     │   └── css/site.css                        all custom CSS and Bootstrap overrides
     │
     │  # ── AUTHENTICATION ─────────────────────────────────────────────────
-    │  # Login, register, Google OAuth, My Profile — powered by ASP.NET Core Identity.
-    │
     ├── Areas/Identity/Pages/Account/
-    │   ├── Login.cshtml / .cs                  email + Google OAuth login
-    │   ├── Register.cshtml / .cs               registration — auto-assigns Tenant role
-    │   ├── ExternalLogin.cshtml / .cs          Google OAuth callback
+    │   ├── Login.cshtml / .cs, Register.cshtml / .cs, ExternalLogin.cshtml / .cs
+    │   ├── ForgotPassword.cshtml / .cs, ResetPassword.cshtml / .cs (+ confirmation pages)
+    │   ├── Lockout.cshtml, AccessDenied.cshtml, and other Identity scaffold pages
     │   └── Manage/
     │       ├── Index.cshtml / .cs              My Profile (edit name, phone)
     │       └── ChangePassword.cshtml / .cs
     │
     │  # ── CONFIG ──────────────────────────────────────────────────────────
-    │  # Environment-specific settings. Never commit appsettings.json.
-    │
     ├── appsettings.json                         DB + Google OAuth secrets (gitignored)
     └── appsettings.example.json                 safe template to share with teammates
 ```
@@ -322,6 +300,7 @@ PropertyManagementPortal/                        ← git repo / solution root
 | Pass cleaner data from controller to view | `Backend/ViewModels/` |
 | Change DB connection or auth settings | `appsettings.json` + `Program.cs` |
 | Change login / register / My Profile flow | `Areas/Identity/` |
+| Add notifications to a role that doesn't have them yet | See `AppControllerBase` in `CLAUDE.md` |
 
 ### Role ownership
 
@@ -332,7 +311,7 @@ PropertyManagementPortal/                        ← git repo / solution root
 | Property Manager | `Backend/Controllers/ManagerController.cs` | `Views/Manager/` |
 | Maintenance Staff | `Backend/Controllers/MaintenanceController.cs` | `Views/Maintenance/` |
 
-> `Models/`, `Data/`, and `Areas/Identity/` are **shared by all roles** — do not modify these unless adding a new DB table.
+> `Database/Models/`, `Database/Data/`, and `Areas/Identity/` are **shared by all roles** — do not modify these unless adding a new DB table.
 
 ---
 
@@ -340,9 +319,9 @@ PropertyManagementPortal/                        ← git repo / solution root
 
 | Role | Description |
 |---|---|
-| Admin | Full system access — user management, property oversight, reports, role approvals |
-| PropertyManager | Manages assigned properties, units, and tenants |
-| Tenant | Default role on registration; can request role upgrade |
+| Admin | Full system access — user management, property oversight, activity log, role approvals, global search, CSV export |
+| PropertyManager | Manages assigned properties, units, applications, payments, and maintenance |
+| Tenant | Default role on registration; browses/applies for units, tracks payments and maintenance requests, can request a role upgrade |
 | MaintenanceStaff | Receives and updates assigned maintenance requests |
 
 ---
@@ -357,9 +336,9 @@ Hosted on [NeonDB](https://neon.tech) (serverless PostgreSQL). The connection st
 
 | Branch | Purpose |
 |---|---|
-| `main` | Stable, production-ready |
+| `main` | Stable, deployable |
 | `dev` | Integration branch |
-| `feature/admin` | Admin panel (complete) |
-| `feature/manager` | Property Manager panel |
-| `feature/tenant` | Tenant panel |
-| `feature/maintenance` | Maintenance Staff panel |
+| `feature/admin` | Admin panel (merged) |
+| `feature/manager` | Property Manager panel (merged) |
+| `feature/tenant` | Tenant panel (merged) |
+| `feature/maintenance` | Maintenance Staff panel (merged) |

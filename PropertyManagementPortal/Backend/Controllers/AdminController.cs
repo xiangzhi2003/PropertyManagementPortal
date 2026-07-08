@@ -453,7 +453,7 @@ namespace PropertyManagementPortal.Controllers
 
             if (hasMaintenanceUpdates)
             {
-                TempData["Error"] = "Cannot delete a user who has a maintenance job history (status updates). Deactivate the account instead.";
+                TempData["Error"] = "Cannot delete a user who has a maintenance job history (status updates).";
                 return RedirectToAction(nameof(Users));
             }
 
@@ -471,7 +471,7 @@ namespace PropertyManagementPortal.Controllers
             }
             catch (DbUpdateException)
             {
-                TempData["Error"] = "Cannot delete this user because other records still reference their account. Deactivate the account instead.";
+                TempData["Error"] = "Cannot delete this user because other records still reference their account.";
                 return RedirectToAction(nameof(Users));
             }
 
@@ -864,6 +864,7 @@ namespace PropertyManagementPortal.Controllers
                 });
             }
 
+            await LogAsync("Exported Activity Log", "ActivityLog", null, $"{logs.Count} record(s)");
             return CsvFile(rows, "activity-log");
         }
 
