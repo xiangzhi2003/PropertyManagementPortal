@@ -14,6 +14,7 @@ namespace PropertyManagementPortal.Controllers
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private const int PageSize = 10;
  
         public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
         {
@@ -42,6 +43,15 @@ namespace PropertyManagementPortal.Controllers
                 .Select(p => new SelectListItem { Value = p.PropertyId.ToString(), Text = p.Name })
                 .ToListAsync();
         }
+ 
+        // Clamp a requested page to the valid range for a given item count.
+        private static int NormalizePage(int page, int totalItems)
+        {
+            var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+            if (page < 1) return 1;
+            if (totalPages > 0 && page > totalPages) return totalPages;
+            return page;
+        }
         // ─────────────────────────────────────────────────────────────────────
  
         public async Task<IActionResult> Dashboard()
@@ -67,7 +77,7 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
             var overduePayments = pendingDueDates.Count(d => d.Date < todayForPayments);
             var pendingPayments = pendingDueDates.Count - overduePayments;
-
+ 
             var unassignedMaintenance = await _db.MaintenanceRequests
                 .CountAsync(m => unitIds.Contains(m.UnitId) && m.AssignedStaffId == null);
  
@@ -89,7 +99,7 @@ namespace PropertyManagementPortal.Controllers
  
         // ── MANAGE UNITS ─────────────────────────────────────────────────────
  
-        public async Task<IActionResult> Units(int? propertyId, string? status, string? search)
+        public async Task<IActionResult> Units(int? propertyId, string? status, string? search, int page = 1)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
  
@@ -104,7 +114,7 @@ namespace PropertyManagementPortal.Controllers
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(u => u.UnitNumber.Contains(search));
  
-            var rows = await query
+            var allRows = await query
                 .OrderBy(u => u.Property.Name).ThenBy(u => u.UnitNumber)
                 .Select(u => new UnitRowViewModel
                 {
@@ -118,13 +128,19 @@ namespace PropertyManagementPortal.Controllers
                 })
                 .ToListAsync();
  
+            page = NormalizePage(page, allRows.Count);
+            var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+ 
             var vm = new UnitListViewModel
             {
-                Units = rows,
+                Units = pageRows,
                 PropertyFilter = propertyId,
                 StatusFilter = status,
                 SearchTerm = search,
-                PropertyOptions = await GetPropertyOptionsAsync()
+                PropertyOptions = await GetPropertyOptionsAsync(),
+                CurrentPage = page,
+                PageSize = PageSize,
+                TotalItems = allRows.Count
             };
  
             return View(vm);
@@ -232,7 +248,7 @@ namespace PropertyManagementPortal.Controllers
  
         // ── TENANT APPLICATIONS ──────────────────────────────────────────────
  
-        public async Task<IActionResult> Applications(string? status)
+        public async Task<IActionResult> Applications(string? status, int page = 1)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
  
@@ -241,7 +257,7 @@ namespace PropertyManagementPortal.Controllers
             if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(t => t.Status == status);
  
-            var rows = await query
+            var allRows = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Select(t => new ApplicationRowViewModel
                 {
@@ -259,16 +275,24 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
  
             // Show pending first so the actionable ones are on top.
-            rows = rows
+            allRows = allRows
                 .OrderBy(r => r.Status == "Pending" ? 0 : 1)
                 .ThenByDescending(r => r.CreatedAt)
                 .ToList();
  
+            var pendingCount = allRows.Count(r => r.Status == "Pending");
+ 
+            page = NormalizePage(page, allRows.Count);
+            var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+ 
             var vm = new ApplicationListViewModel
             {
-                Applications = rows,
+                Applications = pageRows,
                 StatusFilter = status,
-                PendingCount = rows.Count(r => r.Status == "Pending")
+                PendingCount = pendingCount,
+                CurrentPage = page,
+                PageSize = PageSize,
+                TotalItems = allRows.Count
             };
  
             return View(vm);
@@ -301,7 +325,6 @@ namespace PropertyManagementPortal.Controllers
             tenancy.Unit.Status = "Occupied";
  
             // Auto-reject every other pending application on the same unit.
-            // a unit can only be assigned to one tenant.
             var others = await _db.Tenancies
                 .Where(t => t.UnitId == tenancy.UnitId
                          && t.TenancyId != tenancy.TenancyId
@@ -324,7 +347,7 @@ namespace PropertyManagementPortal.Controllers
                 // First payment is due on the start date itself; then the same day each month.
                 // DateTimeKind.Utc is required for PostgreSQL timestamptz.
                 firstDue = DateTime.SpecifyKind(tenancy.StartDate.Date, DateTimeKind.Utc);
-
+ 
                 for (var due = firstDue; due <= tenancy.EndDate.Date; due = due.AddMonths(1))
                 {
                     _db.Payments.Add(new Payment
@@ -388,18 +411,18 @@ namespace PropertyManagementPortal.Controllers
  
         // ── TRACK RENT PAYMENTS ──────────────────────────────────────────────
  
-        public async Task<IActionResult> Payments(string? status, int? propertyId)
+        public async Task<IActionResult> Payments(string? status, int? propertyId, int page = 1)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
  
             // Property filter is applied in SQL; the status filter is applied in memory
             // below so it can use the DERIVED overdue state, not just the stored status.
-            var baseQuery = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
+             var baseQuery = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
  
             if (propertyId.HasValue)
                 baseQuery = baseQuery.Where(p => p.Tenancy.Unit.PropertyId == propertyId.Value);
  
-            var rows = await baseQuery
+            var allRows = await baseQuery
                 .OrderBy(p => p.DueDate)
                 .Select(p => new PaymentRowViewModel
                 {
@@ -417,32 +440,35 @@ namespace PropertyManagementPortal.Controllers
  
             // Derive-on-read: an unpaid payment past its due date shows as Overdue.
             var today = DateTime.UtcNow.Date;
-            foreach (var r in rows)
+            foreach (var r in allRows)
             {
                 if (r.Status == "Pending" && r.DueDate.Date < today)
                     r.Status = "Overdue";
             }
  
             // Summary reflects ALL payments in scope (computed before the status filter).
-            var pendingCount = rows.Count(r => r.Status == "Pending");
-            var overdueCount = rows.Count(r => r.Status == "Overdue");
-            var paidCount = rows.Count(r => r.Status == "Paid");
-            var outstandingAmount = rows.Where(r => r.Status != "Paid").Sum(r => r.Amount);
-            var paidAmount = rows.Where(r => r.Status == "Paid").Sum(r => r.Amount);
+            var pendingCount = allRows.Count(r => r.Status == "Pending");
+            var overdueCount = allRows.Count(r => r.Status == "Overdue");
+            var paidCount = allRows.Count(r => r.Status == "Paid");
+            var outstandingAmount = allRows.Where(r => r.Status != "Paid").Sum(r => r.Amount);
+            var paidAmount = allRows.Where(r => r.Status == "Paid").Sum(r => r.Amount);
  
             // Apply the status filter against the derived status.
             if (!string.IsNullOrWhiteSpace(status))
-                rows = rows.Where(r => r.Status == status).ToList();
+                allRows = allRows.Where(r => r.Status == status).ToList();
  
             // Order: Overdue first, then Pending, then Paid; soonest due within each.
-            rows = rows
+            allRows = allRows
                 .OrderBy(r => r.Status == "Overdue" ? 0 : r.Status == "Pending" ? 1 : 2)
                 .ThenBy(r => r.DueDate)
                 .ToList();
  
+            page = NormalizePage(page, allRows.Count);
+            var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+ 
             var vm = new PaymentListViewModel
             {
-                Payments = rows,
+                Payments = pageRows,
                 StatusFilter = status,
                 PropertyFilter = propertyId,
                 PropertyOptions = await GetPropertyOptionsAsync(),
@@ -450,7 +476,10 @@ namespace PropertyManagementPortal.Controllers
                 OverdueCount = overdueCount,
                 PaidCount = paidCount,
                 OutstandingAmount = outstandingAmount,
-                PaidAmount = paidAmount
+                PaidAmount = paidAmount,
+                CurrentPage = page,
+                PageSize = PageSize,
+                TotalItems = allRows.Count
             };
  
             return View(vm);
@@ -461,22 +490,22 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> MarkPaid(int id, DateTime paymentDate)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
-
+ 
             var payment = await _db.Payments
                 .FirstOrDefaultAsync(p => p.PaymentId == id && propertyIds.Contains(p.Tenancy.Unit.PropertyId));
-
+ 
             if (payment == null)
             {
                 TempData["Error"] = "Payment not found or not in your properties.";
                 return RedirectToAction(nameof(Payments));
             }
-
+ 
             if (payment.Status == "Paid")
             {
                 TempData["Error"] = "This payment is already marked as paid.";
                 return RedirectToAction(nameof(Payments));
             }
-
+ 
             // Guard: don't allow a future payment date.
             var today = DateTime.UtcNow.Date;
             if (paymentDate.Date > today)
@@ -484,19 +513,19 @@ namespace PropertyManagementPortal.Controllers
                 TempData["Error"] = "Payment date cannot be in the future.";
                 return RedirectToAction(nameof(Payments));
             }
-
+ 
             payment.Status = "Paid";
             // Store as UTC — required for PostgreSQL timestamptz columns.
             payment.PaymentDate = DateTime.SpecifyKind(paymentDate.Date, DateTimeKind.Utc);
             await _db.SaveChangesAsync();
-
+ 
             TempData["Success"] = $"Payment recorded as received on {paymentDate:dd MMM yyyy}.";
             return RedirectToAction(nameof(Payments));
         }
  
         // ── ASSIGN MAINTENANCE TASKS ─────────────────────────────────────────
  
-        public async Task<IActionResult> Maintenance(string? status, int? propertyId)
+        public async Task<IActionResult> Maintenance(string? status, int? propertyId, int page = 1)
         {
             var propertyIds = await GetManagedPropertyIdsAsync();
  
@@ -508,7 +537,7 @@ namespace PropertyManagementPortal.Controllers
             if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(m => m.Status == status);
  
-            var rows = await query
+            var allRows = await query
                 .OrderByDescending(m => m.CreatedAt)
                 .Select(m => new MaintenanceRowViewModel
                 {
@@ -527,13 +556,13 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
  
             // Order: Submitted first (needs action), then Assigned, InProgress, Completed.
-            rows = rows
+            allRows = allRows
                 .OrderBy(r => r.Status == "Submitted" ? 0
                             : r.Status == "Assigned" ? 1
                             : r.Status == "InProgress" ? 2 : 3)
                 .ThenByDescending(r => r.CreatedAt)
                 .ToList();
-
+ 
             // Active maintenance staff available for assignment (not property-scoped —
             // staff are a shared pool, not tied to a property).
             var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
@@ -546,14 +575,20 @@ namespace PropertyManagementPortal.Controllers
             var unassignedCount = await _db.MaintenanceRequests
                 .CountAsync(m => propertyIds.Contains(m.Unit.PropertyId) && m.AssignedStaffId == null);
  
+            page = NormalizePage(page, allRows.Count);
+            var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+ 
             var vm = new MaintenanceListViewModel
             {
-                Requests = rows,
+                Requests = pageRows,
                 StatusFilter = status,
                 PropertyFilter = propertyId,
                 PropertyOptions = await GetPropertyOptionsAsync(),
                 StaffOptions = staffOptions,
-                UnassignedCount = unassignedCount
+                UnassignedCount = unassignedCount,
+                CurrentPage = page,
+                PageSize = PageSize,
+                TotalItems = allRows.Count
             };
  
             return View(vm);
