@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
  
 namespace PropertyManagementPortal.ViewModels.Manager
 {
-    public class PaymentListViewModel
+    public class PaymentListViewModel : PaginatedViewModel
     {
         public List<PaymentRowViewModel> Payments { get; set; } = new();
  

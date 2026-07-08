@@ -1,0 +1,147 @@
+@model PropertyManagementPortal.ViewModels.Manager.PaginatedViewModel
+@{
+    // Preserve every current query-string value (status, propertyId, search, ...)
+    // except "page", so navigating pages keeps the active filters.
+    var preserved = string.Join("&", Context.Request.Query
+        .Where(q => q.Key != "page")
+        .Select(q => $"{q.Key}={Uri.EscapeDataString(q.Value.ToString())}"));
+    var prefix = string.IsNullOrEmpty(preserved) ? "?" : $"?{preserved}&";
+
+    var from = Model.TotalItems == 0 ? 0 : (Model.CurrentPage - 1) * Model.PageSize + 1;
+    var to = Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalItems);
+
+    // Windowed page range: show current page ± 1, with first/last + ellipsis.
+    const int window = 1;
+    var start = Math.Max(1, Model.CurrentPage - window);
+    var end = Math.Min(Model.TotalPages, Model.CurrentPage + window);
+}
+
+@if (Model.TotalItems > 0)
+{
+    <div class="pg-wrap">
+        <div class="pg-summary">
+            Showing <strong>@from</strong>–<strong>@to</strong> of <strong>@Model.TotalItems</strong>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav class="pg-nav" aria-label="Pagination">
+                @* Previous *@
+                @if (Model.HasPrevious)
+                {
+                    <a class="pg-btn" href="@(prefix)page=@(Model.CurrentPage - 1)" aria-label="Previous page">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
+                        </svg>
+                    </a>
+                }
+                else
+                {
+                    <span class="pg-btn pg-disabled">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
+                        </svg>
+                    </span>
+                }
+
+                @* First page + leading ellipsis *@
+                @if (start > 1)
+                {
+                    <a class="pg-btn" href="@(prefix)page=1">1</a>
+                    @if (start > 2)
+                    {
+                        <span class="pg-ellipsis">&hellip;</span>
+                    }
+                }
+
+                @* Windowed page numbers *@
+                @for (int i = start; i <= end; i++)
+                {
+                    if (i == Model.CurrentPage)
+                    {
+                        <span class="pg-btn pg-active">@i</span>
+                    }
+                    else
+                    {
+                        <a class="pg-btn" href="@(prefix)page=@i">@i</a>
+                    }
+                }
+
+                @* Trailing ellipsis + last page *@
+                @if (end < Model.TotalPages)
+                {
+                    @if (end < Model.TotalPages - 1)
+                    {
+                        <span class="pg-ellipsis">&hellip;</span>
+                    }
+                    <a class="pg-btn" href="@(prefix)page=@Model.TotalPages">@Model.TotalPages</a>
+                }
+
+                @* Next *@
+                @if (Model.HasNext)
+                {
+                    <a class="pg-btn" href="@(prefix)page=@(Model.CurrentPage + 1)" aria-label="Next page">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
+                        </svg>
+                    </a>
+                }
+                else
+                {
+                    <span class="pg-btn pg-disabled">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
+                        </svg>
+                    </span>
+                }
+            </nav>
+        }
+    </div>
+
+    <style>
+        .pg-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .5rem;
+            margin-top: 1.25rem;
+        }
+        .pg-summary { color: #6b7280; font-size: .85rem; }
+        .pg-nav { display: flex; align-items: center; gap: .3rem; }
+        .pg-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 .6rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            color: #374151;
+            font-size: .85rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all .15s ease;
+        }
+        .pg-btn:hover {
+            border-color: #1e3a5f;
+            color: #1e3a5f;
+            background: #f8fafc;
+        }
+        .pg-active,
+        .pg-active:hover {
+            background: #1e3a5f;
+            border-color: #1e3a5f;
+            color: #fff;
+            cursor: default;
+        }
+        .pg-disabled {
+            color: #d1d5db;
+            background: #f9fafb;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .pg-ellipsis { padding: 0 .25rem; color: #9ca3af; user-select: none; }
+    </style>
+}
