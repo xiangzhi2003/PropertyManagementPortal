@@ -71,7 +71,7 @@ public class ResetPasswordModel : PageModel
 
     }
 
-    public IActionResult OnGet(string? code = null)
+    public IActionResult OnGet(string? code = null, string? email = null)
     {
         if (code == null)
         {
@@ -81,7 +81,8 @@ public class ResetPasswordModel : PageModel
         {
             Input = new InputModel
             {
-                Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code))
+                Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)),
+                Email = email ?? ""
             };
             return Page();
         }
@@ -97,8 +98,8 @@ public class ResetPasswordModel : PageModel
         var user = await _userManager.FindByEmailAsync(Input.Email);
         if (user == null)
         {
-            // Don't reveal that the user does not exist
-            return RedirectToPage("./ResetPasswordConfirmation");
+            ModelState.AddModelError(string.Empty, "No account was found for that email address.");
+            return Page();
         }
 
         var result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);

@@ -4,7 +4,19 @@
     ViewData["Title"] = "Locked out";
 }
 
-<header>
-    <h1 class="text-danger">@ViewData["Title"]</h1>
-    <p class="text-danger">This account has been locked out, please try again later.</p>
-</header>
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="#dc2626" viewBox="0 0 16 16">
+                        <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
+                    </svg>
+                </div>
+                <h3 class="fw-bold mb-2 text-danger">@ViewData["Title"]</h3>
+                <p class="text-muted mb-4">This account has been locked out, please try again later.</p>
+                <a asp-page="./Login" class="btn btn-outline-secondary w-100 py-2 fw-semibold">Back to Log in</a>
+            </div>
+        </div>
+    </div>
+</div>

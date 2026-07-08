@@ -125,9 +125,6 @@ public class ExternalLoginModel : PageModel
                 return RedirectToPage("./Register");
             }
             _logger.LogInformation("{Name} logged in with {LoginProvider} provider.", info.Principal.Identity?.Name, info.LoginProvider);
-            var loggedInUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-            if (loggedInUser != null && await _userManager.IsInRoleAsync(loggedInUser, "Admin"))
-                return RedirectToAction("Dashboard", "Admin", new { area = "" });
             return LocalRedirect(returnUrl);
         }
         if (result.IsLockedOut)
@@ -190,8 +187,6 @@ public class ExternalLoginModel : PageModel
                 {
                     _logger.LogInformation("User created an account using {Name} provider.", info.LoginProvider);
                     await _signInManager.SignInAsync(user, isPersistent: false, info.LoginProvider);
-                    if (await _userManager.IsInRoleAsync(user, "Admin"))
-                        return RedirectToAction("Dashboard", "Admin", new { area = "" });
                     return LocalRedirect(returnUrl);
                 }
             }
