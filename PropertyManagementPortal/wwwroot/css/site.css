@@ -264,6 +264,35 @@ footer a:hover {
     }
 }
 
+/* ── Fixed header + sidebar (opt-in: "maint-body" on <body>, "sticky-shell"
+   on the flex wrapper). The viewport is locked to 100vh and ONLY the main
+   content scrolls — no magic pixel offsets, so nothing drifts. Desktop only;
+   phones keep normal page scroll with the stacked sidebar strip. */
+@media (min-width: 768px) {
+    .maint-body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .maint-body > header {
+        flex: none;                    /* header keeps its natural height, pinned */
+    }
+
+    .maint-body > .sticky-shell {
+        flex: 1;
+        min-height: 0;                 /* let the children own the scroll */
+    }
+
+    .sticky-shell .admin-sidebar,
+    .sticky-shell .admin-main {
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;              /* each column scrolls inside itself */
+    }
+}
+
 /* ── Simple CSS bar chart ────────────────────── */
 .bar-chart {
     display: flex;

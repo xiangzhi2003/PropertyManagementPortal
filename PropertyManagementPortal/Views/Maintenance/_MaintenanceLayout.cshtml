@@ -15,9 +15,9 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body style="background:var(--bg-light);">
+<body class="maint-body" style="background:var(--bg-light);">
 
-<header>
+<header style="position:sticky;top:0;z-index:1030;">
     <nav class="navbar navbar-expand-sm navbar-dark border-bottom" style="background-color:#1e3a5f;">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Home" asp-action="Index">
@@ -46,7 +46,7 @@
     </nav>
 </header>
 
-<div class="d-flex admin-shell" style="min-height:calc(100vh - 62px);">
+<div class="d-flex admin-shell sticky-shell">
     <!-- Sidebar -->
     <aside class="admin-sidebar">
         <span class="admin-sidebar-label">Navigation</span>
