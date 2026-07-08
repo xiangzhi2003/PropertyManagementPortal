@@ -28,6 +28,22 @@ namespace PropertyManagementPortal.ViewModels.Admin
         public int InProgressRequests { get; set; }
         public int CompletedRequests { get; set; }
         public List<MaintenanceDetailRow> OpenMaintenanceDetails { get; set; } = new();
+
+        // ── Trends (last 6 months) ────────────────
+        public List<MonthlyAmount> RevenueTrend { get; set; } = new();
+        public List<MonthlyRate> OccupancyTrend { get; set; } = new();
+    }
+
+    public class MonthlyAmount
+    {
+        public string Label { get; set; } = "";
+        public decimal Amount { get; set; }
+    }
+
+    public class MonthlyRate
+    {
+        public string Label { get; set; } = "";
+        public double Rate { get; set; }
     }
 
     public class MaintenanceDetailRow

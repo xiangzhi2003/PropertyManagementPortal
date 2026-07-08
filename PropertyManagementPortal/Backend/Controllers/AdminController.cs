@@ -36,6 +36,70 @@ namespace PropertyManagementPortal.Controllers
             await _db.SaveChangesAsync();
         }
 
+        // ── Global Search ────────────────────────────────────────────────────────
+        public async Task<IActionResult> GlobalSearch(string? q)
+        {
+            var vm = new GlobalSearchViewModel { Query = q };
+            if (string.IsNullOrWhiteSpace(q))
+                return View(vm);
+
+            var term = q.Trim().ToLower();
+
+            var matchedUsers = _userManager.Users
+                .Where(u => u.FullName.ToLower().Contains(term) || (u.Email != null && u.Email.ToLower().Contains(term)))
+                .Take(10)
+                .ToList();
+            foreach (var u in matchedUsers)
+            {
+                var role = (await _userManager.GetRolesAsync(u)).FirstOrDefault() ?? "No Role";
+                vm.Users.Add(new UserRowViewModel
+                {
+                    Id = u.Id,
+                    FullName = u.FullName,
+                    Email = u.Email ?? "",
+                    PhoneNumber = u.PhoneNumber,
+                    Role = role,
+                    IsActive = u.IsActive,
+                    CreatedAt = u.CreatedAt
+                });
+            }
+
+            vm.Properties = await _db.Properties
+                .Include(p => p.Manager)
+                .Include(p => p.Units)
+                .Where(p => p.Name.ToLower().Contains(term) || p.Address.ToLower().Contains(term))
+                .Take(10)
+                .ToListAsync();
+
+            var today = DateTime.UtcNow.Date;
+            var paymentMatches = await _db.Payments
+                .Include(p => p.Tenancy).ThenInclude(t => t.Tenant)
+                .Include(p => p.Tenancy).ThenInclude(t => t.Unit).ThenInclude(u => u.Property).ThenInclude(pr => pr.Manager)
+                .Where(p => p.Status != "Paid" && p.Tenancy.Tenant.FullName.ToLower().Contains(term))
+                .Select(p => new PaymentDetailRow
+                {
+                    TenantId = p.Tenancy.TenantId,
+                    TenantName = p.Tenancy.Tenant.FullName,
+                    TenantEmail = p.Tenancy.Tenant.Email ?? "",
+                    TenantPhone = p.Tenancy.Tenant.PhoneNumber ?? "",
+                    PropertyName = p.Tenancy.Unit.Property.Name,
+                    UnitNumber = p.Tenancy.Unit.UnitNumber,
+                    ManagerName = p.Tenancy.Unit.Property.Manager != null ? p.Tenancy.Unit.Property.Manager.FullName : null,
+                    Amount = p.Amount,
+                    DueDate = p.DueDate,
+                    Status = p.Status
+                })
+                .Take(10)
+                .ToListAsync();
+
+            foreach (var p in paymentMatches)
+                if (p.Status == "Pending" && p.DueDate.Date < today)
+                    p.Status = "Overdue";
+            vm.Payments = paymentMatches;
+
+            return View(vm);
+        }
+
         // ── Dashboard (includes what used to be the separate Reports page) ────────
         public async Task<IActionResult> Dashboard()
         {
@@ -118,6 +182,45 @@ namespace PropertyManagementPortal.Controllers
                 })
                 .ToListAsync();
 
+            // ── Trends (last 6 months, oldest first) ────────────────────────────
+            var now = DateTime.UtcNow;
+            var trendStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+
+            var paidInRange = await _db.Payments
+                .Where(p => p.Status == "Paid" && p.PaymentDate != null && p.PaymentDate >= trendStart)
+                .Select(p => new { p.PaymentDate, p.Amount })
+                .ToListAsync();
+
+            var revenueTrend = new List<MonthlyAmount>();
+            for (var i = 0; i < 6; i++)
+            {
+                var m = trendStart.AddMonths(i);
+                var sum = paidInRange
+                    .Where(p => p.PaymentDate!.Value.Year == m.Year && p.PaymentDate.Value.Month == m.Month)
+                    .Sum(p => p.Amount);
+                revenueTrend.Add(new MonthlyAmount { Label = m.ToString("MMM"), Amount = sum });
+            }
+
+            // Occupancy trend is approximated from Approved tenancy date ranges overlapping
+            // each month (against the CURRENT total unit count — there's no historical
+            // snapshot of unit counts, so this is a best-effort trend, not exact history).
+            var totalUnitsNow = await _db.Units.CountAsync();
+            var approvedTenancies = await _db.Tenancies
+                .Where(t => t.Status == "Approved")
+                .Select(t => new { t.StartDate, t.EndDate })
+                .ToListAsync();
+
+            var occupancyTrend = new List<MonthlyRate>();
+            for (var i = 0; i < 6; i++)
+            {
+                var m = trendStart.AddMonths(i);
+                var monthStart = m;
+                var monthEnd = m.AddMonths(1).AddDays(-1);
+                var activeCount = approvedTenancies.Count(t => t.StartDate <= monthEnd && t.EndDate >= monthStart);
+                var rate = totalUnitsNow == 0 ? 0 : Math.Round((double)activeCount / totalUnitsNow * 100, 1);
+                occupancyTrend.Add(new MonthlyRate { Label = m.ToString("MMM"), Rate = rate });
+            }
+
             var vm = new DashboardViewModel
             {
                 AdminName = admin!.FullName,
@@ -144,7 +247,11 @@ namespace PropertyManagementPortal.Controllers
                 AssignedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Assigned"),
                 InProgressRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "InProgress"),
                 CompletedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed"),
-                OpenMaintenanceDetails = openMaintenanceDetails
+                OpenMaintenanceDetails = openMaintenanceDetails,
+
+                // Trends
+                RevenueTrend = revenueTrend,
+                OccupancyTrend = occupancyTrend
             };
 
             ViewBag.RecentLogs = await _db.ActivityLogs
@@ -677,6 +784,106 @@ namespace PropertyManagementPortal.Controllers
             await LogAsync("Rejected Role Request", "RoleRequest", id.ToString(), $"{request.User.FullName} → {request.RequestedRole}");
             TempData["Success"] = $"Role request from {request.User.FullName} has been rejected.";
             return RedirectToAction(nameof(RoleRequests));
+        }
+
+        // ── CSV Export ───────────────────────────────────────────────────────────
+        public async Task<IActionResult> ExportUsers()
+        {
+            var allUsers = _userManager.Users.ToList();
+            var rows = new List<string[]> { new[] { "Full Name", "Email", "Phone", "Role", "Status", "Joined" } };
+
+            foreach (var u in allUsers)
+            {
+                var role = (await _userManager.GetRolesAsync(u)).FirstOrDefault() ?? "No Role";
+                rows.Add(new[]
+                {
+                    u.FullName, u.Email ?? "", u.PhoneNumber ?? "", role,
+                    u.IsActive ? "Active" : "Inactive", u.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")
+                });
+            }
+
+            await LogAsync("Exported Users", "User", null, $"{allUsers.Count} record(s)");
+            return CsvFile(rows, "users");
+        }
+
+        public async Task<IActionResult> ExportProperties()
+        {
+            var properties = await _db.Properties.Include(p => p.Manager).Include(p => p.Units).ToListAsync();
+            var rows = new List<string[]> { new[] { "Property Name", "Address", "Type", "Manager", "Total Units", "Occupied", "Vacant", "Status" } };
+
+            foreach (var p in properties)
+            {
+                var occupied = p.Units.Count(u => u.Status == "Occupied");
+                rows.Add(new[]
+                {
+                    p.Name, p.Address, p.Type, p.Manager?.FullName ?? "Unassigned",
+                    p.Units.Count.ToString(), occupied.ToString(), (p.Units.Count - occupied).ToString(), p.Status
+                });
+            }
+
+            await LogAsync("Exported Properties", "Property", null, $"{properties.Count} record(s)");
+            return CsvFile(rows, "properties");
+        }
+
+        public async Task<IActionResult> ExportPayments()
+        {
+            var payments = await _db.Payments
+                .Include(p => p.Tenancy).ThenInclude(t => t.Tenant)
+                .Include(p => p.Tenancy).ThenInclude(t => t.Unit).ThenInclude(u => u.Property)
+                .OrderByDescending(p => p.DueDate)
+                .ToListAsync();
+
+            var today = DateTime.UtcNow.Date;
+            var rows = new List<string[]> { new[] { "Tenant", "Property", "Unit", "Amount", "Due Date", "Payment Date", "Status" } };
+
+            foreach (var p in payments)
+            {
+                var status = p.Status == "Pending" && p.DueDate.Date < today ? "Overdue" : p.Status;
+                rows.Add(new[]
+                {
+                    p.Tenancy.Tenant.FullName, p.Tenancy.Unit.Property.Name, p.Tenancy.Unit.UnitNumber,
+                    p.Amount.ToString("F2"), p.DueDate.ToString("yyyy-MM-dd"),
+                    p.PaymentDate?.ToString("yyyy-MM-dd") ?? "", status
+                });
+            }
+
+            await LogAsync("Exported Payments", "Payment", null, $"{payments.Count} record(s)");
+            return CsvFile(rows, "payments");
+        }
+
+        public async Task<IActionResult> ExportActivityLog()
+        {
+            var logs = await _db.ActivityLogs.OrderByDescending(l => l.Timestamp).ToListAsync();
+            var rows = new List<string[]> { new[] { "Timestamp", "Admin", "Action", "Entity", "Details" } };
+
+            foreach (var l in logs)
+            {
+                rows.Add(new[]
+                {
+                    l.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm"), l.UserName, l.Action, l.EntityType, l.Details ?? ""
+                });
+            }
+
+            return CsvFile(rows, "activity-log");
+        }
+
+        // Builds a CSV file download from rows (first row is the header).
+        // Values are comma/quote/newline-escaped per RFC 4180.
+        private FileContentResult CsvFile(List<string[]> rows, string fileNamePrefix)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var row in rows)
+                sb.AppendLine(string.Join(",", row.Select(CsvEscape)));
+
+            var fileName = $"{fileNamePrefix}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+            return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", fileName);
+        }
+
+        private static string CsvEscape(string value)
+        {
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            return value;
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────────

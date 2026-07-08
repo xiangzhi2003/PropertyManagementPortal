@@ -16,9 +16,12 @@
         <h3>Activity Log</h3>
         <p>All admin actions recorded in the system</p>
     </div>
-    <span class="badge text-bg-light border fw-normal" style="font-size:.85rem;padding:.5rem .9rem;">
-        @ViewBag.TotalCount total record(s)
-    </span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge text-bg-light border fw-normal" style="font-size:.85rem;padding:.5rem .9rem;">
+            @ViewBag.TotalCount total record(s)
+        </span>
+        <a asp-action="ExportActivityLog" class="btn btn-outline-secondary btn-sm">Export CSV</a>
+    </div>
 </div>
 
 <div class="card mb-4">
