@@ -119,12 +119,51 @@
             </div>
         </div>
         <div class="mb-1 d-flex justify-content-between align-items-center">
-            <span class="small text-muted">Occupancy progress</span>
+            <span class="small text-muted">Overall occupancy</span>
             <span class="small fw-semibold">@Model.OccupancyRate%</span>
         </div>
         <div class="progress" style="height:16px;border-radius:8px;">
             <div class="progress-bar bg-success" style="width:@Model.OccupancyRate%;border-radius:8px;" role="progressbar" aria-valuenow="@Model.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
+
+        @if (Model.OccupancyByProperty.Any())
+        {
+            <hr class="my-4" />
+            <h6 class="section-heading mb-3">Occupancy by Property</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th>Property</th>
+                            <th class="text-center">Total Units</th>
+                            <th class="text-center">Occupied</th>
+                            <th class="text-center">Vacant</th>
+                            <th style="min-width:180px;">Occupancy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var prop in Model.OccupancyByProperty)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@prop.PropertyName</td>
+                                <td class="text-center">@prop.TotalUnits</td>
+                                <td class="text-center" style="color:#16a34a;">@prop.OccupiedUnits</td>
+                                <td class="text-center" style="color:#d97706;">@prop.VacantUnits</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height:10px;border-radius:6px;">
+                                            <div class="progress-bar bg-success" style="width:@prop.OccupancyRate%;border-radius:6px;"
+                                                 role="progressbar" aria-valuenow="@prop.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="small text-muted text-nowrap">@prop.OccupancyRate%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 
@@ -160,6 +199,53 @@
                                 <div class="bar-label">@p.Label</div>
                             </div>
                         }
+                    </div>
+                }
+
+                @if (Model.UnpaidPaymentDetails.Any())
+                {
+                    <hr class="my-3" />
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="section-heading mb-0" style="font-size:.78rem;">Pending &amp; Overdue Payments</h6>
+                        <span class="text-muted" style="font-size:.78rem;">@Model.UnpaidPaymentDetails.Count record(s)</span>
+                    </div>
+                    <div class="table-responsive" style="max-height:280px;overflow-y:auto;">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead style="background:#f8fafc;position:sticky;top:0;">
+                                <tr>
+                                    <th>Tenant</th>
+                                    <th>Property / Unit</th>
+                                    <th>Manager</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.UnpaidPaymentDetails)
+                                {
+                                    <tr>
+                                        <td class="small">
+                                            <a asp-action="ViewUser" asp-route-id="@p.TenantId" class="text-decoration-none" title="@p.TenantEmail &#10;@p.TenantPhone">@p.TenantName</a>
+                                        </td>
+                                        <td class="small">@p.PropertyName &middot; Unit @p.UnitNumber</td>
+                                        <td class="small">@(p.ManagerName ?? "—")</td>
+                                        <td class="small text-end">RM @p.Amount.ToString("N2")</td>
+                                        <td class="small">@p.DueDate.ToString("dd MMM yyyy")</td>
+                                        <td>
+                                            @if (p.Status == "Overdue")
+                                            {
+                                                <span class="badge bg-danger">Overdue &middot; @p.DaysOverdue d</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 }
             </div>
@@ -199,6 +285,60 @@
                         }
                     </div>
                 }
+
+                @if (Model.OpenMaintenanceDetails.Any())
+                {
+                    var maintStatusColor = new Dictionary<string, (string bg, string fg)>
+                    {
+                        ["Submitted"] = ("#fef3c7", "#d97706"),
+                        ["Assigned"] = ("#dbeafe", "#2563eb"),
+                        ["InProgress"] = ("#ede9fe", "#7c3aed")
+                    };
+                    <hr class="my-3" />
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="section-heading mb-0" style="font-size:.78rem;">Open Requests</h6>
+                        <span class="text-muted" style="font-size:.78rem;">@Model.OpenMaintenanceDetails.Count record(s)</span>
+                    </div>
+                    <div class="table-responsive" style="max-height:280px;overflow-y:auto;">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead style="background:#f8fafc;position:sticky;top:0;">
+                                <tr>
+                                    <th>Property / Unit</th>
+                                    <th>Category</th>
+                                    <th>Tenant</th>
+                                    <th>Manager</th>
+                                    <th>Assigned Staff</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in Model.OpenMaintenanceDetails)
+                                {
+                                    var (mbg, mfg) = maintStatusColor.TryGetValue(m.Status, out var c) ? c : ("#f3f4f6", "#6b7280");
+                                    <tr>
+                                        <td class="small">@m.PropertyName &middot; Unit @m.UnitNumber</td>
+                                        <td class="small">@m.Category</td>
+                                        <td class="small">
+                                            <a asp-action="ViewUser" asp-route-id="@m.TenantId" class="text-decoration-none" title="@m.TenantPhone">@m.TenantName</a>
+                                        </td>
+                                        <td class="small">@(m.ManagerName ?? "—")</td>
+                                        <td class="small">
+                                            @if (m.AssignedStaffId != null)
+                                            {
+                                                <a asp-action="ViewUser" asp-route-id="@m.AssignedStaffId" class="text-decoration-none">@m.AssignedStaffName</a>
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                        </td>
+                                        <td><span class="badge" style="background:@mbg;color:@mfg;">@m.Status</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -213,19 +353,32 @@
         </div>
         @{
             var recentLogs = ViewBag.RecentLogs as List<PropertyManagementPortal.Models.ActivityLog>;
+
+            (string bg, string fg) ActivityColor(string action) => action switch
+            {
+                var a when a.StartsWith("Delet") || a.StartsWith("Reject") => ("#fee2e2", "#dc2626"),
+                var a when a.StartsWith("Add") || a.StartsWith("Creat") || a.StartsWith("Approv") || a.StartsWith("Activat") => ("#dcfce7", "#16a34a"),
+                var a when a.StartsWith("Edit") || a.StartsWith("Updat") => ("#dbeafe", "#2563eb"),
+                _ => ("#f3f4f6", "#6b7280")
+            };
         }
         @if (recentLogs != null && recentLogs.Any())
         {
             @foreach (var log in recentLogs)
             {
+                var (abg, afg) = ActivityColor(log.Action);
                 <div class="activity-item">
                     <div class="d-flex gap-3 align-items-start">
-                        <div class="activity-dot mt-2"></div>
+                        <div class="activity-dot mt-2" style="background:@afg;"></div>
                         <div>
-                            <span class="fw-semibold" style="font-size:.92rem;">@log.Action</span>
+                            <span class="badge" style="background:@abg;color:@afg;font-weight:500;">@log.Action</span>
+                            @if (!string.IsNullOrEmpty(log.EntityType))
+                            {
+                                <span class="text-muted ms-1" style="font-size:.78rem;">@log.EntityType</span>
+                            }
                             @if (!string.IsNullOrEmpty(log.Details))
                             {
-                                <span class="text-muted ms-1" style="font-size:.88rem;">— @log.Details</span>
+                                <div class="text-muted mt-1" style="font-size:.88rem;">@log.Details</div>
                             }
                             <div class="text-muted mt-1" style="font-size:.8rem;">by @log.UserName</div>
                         </div>

@@ -6,6 +6,28 @@
     <p class="text-muted mb-0">Review and approve or reject user role upgrade requests.</p>
 </div>
 
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card stat-card" style="border-left:4px solid #d97706;">
+            <p class="stat-label">Pending</p>
+            <div class="stat-number" style="color:#d97706;">@ViewBag.PendingCount</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card" style="border-left:4px solid #16a34a;">
+            <p class="stat-label">Approved</p>
+            <div class="stat-number" style="color:#16a34a;">@ViewBag.ApprovedCount</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card" style="border-left:4px solid #dc2626;">
+            <p class="stat-label">Rejected</p>
+            <div class="stat-number" style="color:#dc2626;">@ViewBag.RejectedCount</div>
+        </div>
+    </div>
+</div>
+
 <!-- Filter -->
 <div class="card filter-card mb-4">
     <form method="get" class="d-flex align-items-end gap-3 flex-wrap">
@@ -46,6 +68,7 @@
                         <td>
                             <div class="fw-semibold">@r.User.FullName</div>
                             <div class="text-muted" style="font-size:.82rem;">@r.User.Email</div>
+                            <div class="text-muted" style="font-size:.75rem;">Member since @r.User.CreatedAt.ToLocalTime().ToString("MMM yyyy")</div>
                         </td>
                         <td>
                             @if (r.RequestedRole == "PropertyManager")

@@ -43,6 +43,25 @@
                     <div class="detail-field-value">@Model.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy")</div>
                 </div>
 
+                @{
+                    var occupiedUnits = Model.Units.Count(u => u.Status == "Occupied");
+                    var totalUnits = Model.Units.Count;
+                    var occRate = totalUnits == 0 ? 0 : Math.Round((double)occupiedUnits / totalUnits * 100, 0);
+                }
+                @if (totalUnits > 0)
+                {
+                    <div class="detail-row">
+                        <div class="detail-field-label">Occupancy</div>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <div class="progress flex-grow-1" style="height:10px;border-radius:6px;">
+                                <div class="progress-bar bg-success" style="width:@occRate%;border-radius:6px;"
+                                     role="progressbar" aria-valuenow="@occRate" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <span class="small fw-semibold text-nowrap">@occupiedUnits/@totalUnits (@occRate%)</span>
+                        </div>
+                    </div>
+                }
+
                 <div class="d-flex flex-column gap-2 mt-4">
                     <a asp-action="EditProperty" asp-route-id="@Model.PropertyId" class="btn btn-primary btn-lg">Edit Property</a>
                     <form asp-action="DeleteProperty" asp-route-id="@Model.PropertyId" method="post">
@@ -74,6 +93,7 @@
                             <th>Type</th>
                             <th>Floor</th>
                             <th>Rent (RM)</th>
+                            <th>Tenant</th>
                             <th>Status</th>
                             <th></th>
                         </tr>
@@ -81,11 +101,13 @@
                     <tbody>
                         @foreach (var unit in Model.Units.OrderBy(u => u.Floor).ThenBy(u => u.UnitNumber))
                         {
+                            var activeTenant = unit.Tenancies.FirstOrDefault(t => t.Status == "Approved")?.Tenant;
                             <tr>
                                 <td class="fw-semibold">@unit.UnitNumber</td>
                                 <td class="text-muted">@unit.Type</td>
                                 <td class="text-muted">@unit.Floor</td>
                                 <td class="fw-semibold">@unit.RentAmount.ToString("N2")</td>
+                                <td class="text-muted">@(activeTenant?.FullName ?? "—")</td>
                                 <td>
                                     @if (unit.Status == "Occupied")
                                     { <span class="badge bg-success">Occupied</span> }
@@ -107,7 +129,7 @@
                         }
                         @if (!Model.Units.Any())
                         {
-                            <tr><td colspan="6" class="text-center text-muted py-5">No units added yet.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-5">No units added yet.</td></tr>
                         }
                     </tbody>
                 </table>

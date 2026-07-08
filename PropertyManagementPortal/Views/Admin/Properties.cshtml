@@ -42,6 +42,10 @@
     </div>
 </div>
 
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="text-muted small">@Model.Count propert(y/ies) found</span>
+</div>
+
 <div class="card table-card">
     <div class="table-responsive">
         <table class="table table-hover">
@@ -51,7 +55,7 @@
                     <th>Address</th>
                     <th>Type</th>
                     <th>Manager</th>
-                    <th>Units</th>
+                    <th style="min-width:170px;">Occupancy</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -59,12 +63,30 @@
             <tbody>
                 @foreach (var p in Model)
                 {
+                    var occupied = p.Units.Count(u => u.Status == "Occupied");
+                    var total = p.Units.Count;
+                    var rate = total == 0 ? 0 : Math.Round((double)occupied / total * 100, 0);
                     <tr>
                         <td class="fw-semibold">@p.Name</td>
                         <td class="text-muted">@p.Address</td>
                         <td><span class="badge bg-light text-dark border">@p.Type</span></td>
                         <td class="text-muted">@(p.Manager?.FullName ?? "—")</td>
-                        <td><span class="badge bg-light text-dark border">@p.Units.Count units</span></td>
+                        <td>
+                            @if (total == 0)
+                            {
+                                <span class="text-muted small">No units yet</span>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px;border-radius:5px;max-width:90px;">
+                                        <div class="progress-bar bg-success" style="width:@rate%;border-radius:5px;"
+                                             role="progressbar" aria-valuenow="@rate" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="small text-nowrap">@occupied/@total</span>
+                                </div>
+                            }
+                        </td>
                         <td>
                             @if (p.Status == "Active")
                             { <span class="badge bg-success">Active</span> }

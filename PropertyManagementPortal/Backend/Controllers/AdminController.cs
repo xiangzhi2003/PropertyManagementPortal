@@ -44,7 +44,79 @@ namespace PropertyManagementPortal.Controllers
             var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
             var admin = await _userManager.GetUserAsync(User);
 
-            var overduePayments = await _db.Payments.CountAsync(p => p.Status == "Overdue");
+            // Overdue is derived, not stored: a Pending payment past its due date counts
+            // as overdue. Mirrors the same derive-on-read logic ManagerController uses.
+            // Fetched with full property/unit/tenant detail so the dashboard can show
+            // exactly which payment and property each unpaid record belongs to.
+            var today = DateTime.UtcNow.Date;
+            var unpaidPayments = await _db.Payments
+                .Include(p => p.Tenancy).ThenInclude(t => t.Tenant)
+                .Include(p => p.Tenancy).ThenInclude(t => t.Unit).ThenInclude(u => u.Property).ThenInclude(pr => pr.Manager)
+                .Where(p => p.Status != "Paid")
+                .Select(p => new PaymentDetailRow
+                {
+                    TenantId = p.Tenancy.TenantId,
+                    TenantName = p.Tenancy.Tenant.FullName,
+                    TenantEmail = p.Tenancy.Tenant.Email ?? "",
+                    TenantPhone = p.Tenancy.Tenant.PhoneNumber ?? "",
+                    PropertyName = p.Tenancy.Unit.Property.Name,
+                    UnitNumber = p.Tenancy.Unit.UnitNumber,
+                    ManagerName = p.Tenancy.Unit.Property.Manager != null ? p.Tenancy.Unit.Property.Manager.FullName : null,
+                    Amount = p.Amount,
+                    DueDate = p.DueDate,
+                    Status = p.Status
+                })
+                .ToListAsync();
+
+            foreach (var p in unpaidPayments)
+                if (p.Status == "Pending" && p.DueDate.Date < today)
+                    p.Status = "Overdue";
+
+            unpaidPayments = unpaidPayments
+                .OrderBy(p => p.Status == "Overdue" ? 0 : 1)
+                .ThenBy(p => p.DueDate)
+                .ToList();
+
+            var overduePayments = unpaidPayments.Count(p => p.Status == "Overdue");
+            var pendingPaymentsCount = unpaidPayments.Count - overduePayments;
+
+            // Occupancy broken down per property, so a single overall rate isn't the
+            // only view — an admin can see exactly which property is under-occupied.
+            var occupancyByProperty = await _db.Properties
+                .Select(p => new PropertyOccupancyRow
+                {
+                    PropertyName = p.Name,
+                    TotalUnits = p.Units.Count,
+                    OccupiedUnits = p.Units.Count(u => u.Status == "Occupied")
+                })
+                .OrderByDescending(p => p.TotalUnits)
+                .ToListAsync();
+
+            // Open maintenance requests with full context, so an admin can see exactly
+            // which property/unit/tenant each still-open job belongs to.
+            var openMaintenanceDetails = await _db.MaintenanceRequests
+                .Include(m => m.Tenant)
+                .Include(m => m.AssignedStaff)
+                .Include(m => m.Unit).ThenInclude(u => u.Property).ThenInclude(p => p.Manager)
+                .Where(m => m.Status != "Completed")
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new MaintenanceDetailRow
+                {
+                    RequestId = m.RequestId,
+                    Category = m.Category,
+                    PropertyName = m.Unit.Property.Name,
+                    UnitNumber = m.Unit.UnitNumber,
+                    TenantId = m.TenantId,
+                    TenantName = m.Tenant.FullName,
+                    TenantPhone = m.Tenant.PhoneNumber ?? "",
+                    Status = m.Status,
+                    Priority = m.Priority,
+                    ManagerName = m.Unit.Property.Manager != null ? m.Unit.Property.Manager.FullName : null,
+                    AssignedStaffId = m.AssignedStaffId,
+                    AssignedStaffName = m.AssignedStaff != null ? m.AssignedStaff.FullName : null,
+                    CreatedAt = m.CreatedAt
+                })
+                .ToListAsync();
 
             var vm = new DashboardViewModel
             {
@@ -59,17 +131,20 @@ namespace PropertyManagementPortal.Controllers
                 TotalUnits = await _db.Units.CountAsync(),
                 OccupiedUnits = await _db.Units.CountAsync(u => u.Status == "Occupied"),
                 VacantUnits = await _db.Units.CountAsync(u => u.Status == "Vacant"),
+                OccupancyByProperty = occupancyByProperty,
 
                 // Payments
                 TotalPayments = await _db.Payments.CountAsync(),
                 PaidPayments = await _db.Payments.CountAsync(p => p.Status == "Paid"),
-                PendingPayments = await _db.Payments.CountAsync(p => p.Status == "Pending"),
+                PendingPayments = pendingPaymentsCount,
+                UnpaidPaymentDetails = unpaidPayments,
 
                 // Maintenance
                 SubmittedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Submitted"),
                 AssignedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Assigned"),
                 InProgressRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "InProgress"),
-                CompletedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed")
+                CompletedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed"),
+                OpenMaintenanceDetails = openMaintenanceDetails
             };
 
             ViewBag.RecentLogs = await _db.ActivityLogs
@@ -220,10 +295,21 @@ namespace PropertyManagementPortal.Controllers
             var roles = await _userManager.GetRolesAsync(user);
             var tenancyCount = await _db.Tenancies.CountAsync(t => t.TenantId == id);
             var maintenanceCount = await _db.MaintenanceRequests.CountAsync(m => m.TenantId == id);
+            var outstandingAmount = await _db.Payments
+                .Where(p => p.Tenancy.TenantId == id && p.Status != "Paid")
+                .SumAsync(p => (decimal?)p.Amount) ?? 0;
 
             ViewBag.Role = roles.FirstOrDefault() ?? "No Role";
             ViewBag.TenancyCount = tenancyCount;
             ViewBag.MaintenanceCount = maintenanceCount;
+            ViewBag.OutstandingAmount = outstandingAmount;
+            // Actions performed ON this account (Created/Edited/Deleted User), not
+            // actions this user performed themselves — matches EntityId, not UserId.
+            ViewBag.RecentActivity = await _db.ActivityLogs
+                .Where(l => l.EntityType == "User" && l.EntityId == id)
+                .OrderByDescending(l => l.Timestamp)
+                .Take(5)
+                .ToListAsync();
             return View(user);
         }
 
@@ -385,7 +471,7 @@ namespace PropertyManagementPortal.Controllers
         {
             var property = await _db.Properties
                 .Include(p => p.Manager)
-                .Include(p => p.Units)
+                .Include(p => p.Units).ThenInclude(u => u.Tenancies).ThenInclude(t => t.Tenant)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
             if (property == null) return NotFound();
@@ -428,11 +514,25 @@ namespace PropertyManagementPortal.Controllers
         }
 
         // ── Activity Log ─────────────────────────────────────────────────────────
-        public async Task<IActionResult> ActivityLog(int page = 1)
+        public async Task<IActionResult> ActivityLog(int page = 1, string? search = null, string? entityType = null)
         {
             const int pageSize = 20;
-            var total = await _db.ActivityLogs.CountAsync();
-            var logs = await _db.ActivityLogs
+
+            var query = _db.ActivityLogs.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(entityType))
+                query = query.Where(l => l.EntityType == entityType);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.ToLower();
+                query = query.Where(l => l.UserName.ToLower().Contains(s)
+                                       || l.Action.ToLower().Contains(s)
+                                       || (l.Details != null && l.Details.ToLower().Contains(s)));
+            }
+
+            var total = await query.CountAsync();
+            var logs = await query
                 .OrderByDescending(l => l.Timestamp)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -440,6 +540,14 @@ namespace PropertyManagementPortal.Controllers
 
             ViewBag.Page = page;
             ViewBag.TotalPages = (int)Math.Ceiling((double)total / pageSize);
+            ViewBag.TotalCount = total;
+            ViewBag.Search = search;
+            ViewBag.EntityTypeFilter = entityType;
+            ViewBag.EntityTypes = await _db.ActivityLogs
+                .Select(l => l.EntityType)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToListAsync();
             return View(logs);
         }
 
@@ -524,6 +632,8 @@ namespace PropertyManagementPortal.Controllers
 
             ViewBag.StatusFilter = status;
             ViewBag.PendingCount = await _db.RoleRequests.CountAsync(r => r.Status == "Pending");
+            ViewBag.ApprovedCount = await _db.RoleRequests.CountAsync(r => r.Status == "Approved");
+            ViewBag.RejectedCount = await _db.RoleRequests.CountAsync(r => r.Status == "Rejected");
             return View(await query.OrderByDescending(r => r.RequestedAt).ToListAsync());
         }
 
