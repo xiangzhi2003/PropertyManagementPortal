@@ -4,6 +4,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-NeonDB-336791?logo=postgresql)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap)
 ![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs)
+![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash--Lite-8E75B2?logo=googlegemini)
 
 A centralized web platform for managing properties, tenants, maintenance requests, and payments. Built as a university assignment for **CT071-3-3-DDAC** (Designing and Developing ASP.NET Core Applications).
 
@@ -31,6 +32,7 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
 - Maintenance Summary — Chart.js bar chart by status, a drill-down table of every open request (tenant, manager, assigned staff, category, status) with clickable profile links
 - Revenue Trend & Occupancy Trend — two Chart.js line charts covering the last 6 months
 - Recent Activity feed with color-coded badges by action type
+- **AI Property Report** — "Generate AI Report" button builds a full portfolio briefing (no page reload). The factual half is rendered from live data: a "portfolio at a glance" stat row, a per-property table (manager, units, occupied, tenants, overdue, open jobs), and team tables (managers and staff with their workloads). Google's Gemini API (`gemini-3.1-flash-lite`, structured JSON output) layers the analytical half on top: an overall-health verdict, an executive summary, a status assessment (Good/Warning/Critical) per operational area, and a numbered list of priority actions — all referencing specific properties, managers, and staff by name. Hard numbers come from the app, never the AI, so nothing is fabricated.
 
 **Manage Users**
 - Table view: avatar initials, name, email, phone, role badge, status badge, joined date
@@ -94,6 +96,7 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
 | Database | PostgreSQL (NeonDB serverless) via Npgsql |
 | Authentication | ASP.NET Core Identity + Google OAuth 2.0 |
 | Payments | Stripe.net |
+| AI | Google Gemini API (`gemini-3.1-flash-lite`) — Admin Dashboard AI summary |
 | UI | Bootstrap 5, Chart.js 4, Inter font, custom CSS |
 
 ---
@@ -125,12 +128,16 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
          "ClientSecret": "<your-google-client-secret>"
        }
      },
+     "Gemini": {
+       "ApiKey": "<your-gemini-api-key>"
+     },
      "Logging": {
        "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" }
      },
      "AllowedHosts": "*"
    }
    ```
+   Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — only needed for the Admin Dashboard's "Generate AI Summary" button; the rest of the app works without it.
 
 3. **Apply database migrations**
    ```bash
