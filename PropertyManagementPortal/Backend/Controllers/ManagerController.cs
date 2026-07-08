@@ -341,15 +341,21 @@ namespace PropertyManagementPortal.Controllers
             var rent = tenancy.Unit.RentAmount;
             var scheduled = 0;
             DateTime firstDue = default;
- 
+
             if (tenancy.EndDate >= tenancy.StartDate)
             {
-                // First payment is due on the start date itself; then the same day each month.
                 // DateTimeKind.Utc is required for PostgreSQL timestamptz.
-                firstDue = DateTime.SpecifyKind(tenancy.StartDate.Date, DateTimeKind.Utc);
- 
-                for (var due = firstDue; due <= tenancy.EndDate.Date; due = due.AddMonths(1))
+                var startDate = DateTime.SpecifyKind(tenancy.StartDate.Date, DateTimeKind.Utc);
+
+                // First payment is due 7 days after the start date; every following month
+                // is due on the start date's day-of-month.
+                firstDue = startDate.AddDays(7);
+
+                var monthIndex = 0;
+                for (var monthDate = startDate; monthDate <= tenancy.EndDate.Date; monthDate = monthDate.AddMonths(1))
                 {
+                    var due = monthIndex == 0 ? firstDue : monthDate;
+
                     _db.Payments.Add(new Payment
                     {
                         TenancyId = tenancy.TenancyId,
@@ -359,6 +365,7 @@ namespace PropertyManagementPortal.Controllers
                         Status = "Pending"
                     });
                     scheduled++;
+                    monthIndex++;
                 }
             }
  
