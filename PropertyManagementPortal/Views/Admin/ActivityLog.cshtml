@@ -1,9 +1,49 @@
 @model List<PropertyManagementPortal.Models.ActivityLog>
-@{ ViewData["Title"] = "Activity Log"; }
+@{
+    ViewData["Title"] = "Activity Log";
 
-<div class="page-header">
-    <h3>Activity Log</h3>
-    <p>All admin actions recorded in the system</p>
+    (string bg, string fg) ActivityColor(string action) => action switch
+    {
+        var a when a.StartsWith("Delet") || a.StartsWith("Reject") => ("#fee2e2", "#dc2626"),
+        var a when a.StartsWith("Add") || a.StartsWith("Creat") || a.StartsWith("Approv") || a.StartsWith("Activat") => ("#dcfce7", "#16a34a"),
+        var a when a.StartsWith("Edit") || a.StartsWith("Updat") => ("#dbeafe", "#2563eb"),
+        _ => ("#f3f4f6", "#6b7280")
+    };
+}
+
+<div class="page-header d-flex justify-content-between align-items-start">
+    <div>
+        <h3>Activity Log</h3>
+        <p>All admin actions recorded in the system</p>
+    </div>
+    <span class="badge text-bg-light border fw-normal" style="font-size:.85rem;padding:.5rem .9rem;">
+        @ViewBag.TotalCount total record(s)
+    </span>
+</div>
+
+<div class="card mb-4">
+    <div class="filter-card">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Admin name, action, or details..." />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Entity</label>
+                <select name="entityType" class="form-select">
+                    <option value="">All Entities</option>
+                    @foreach (var t in (List<string>)ViewBag.EntityTypes)
+                    {
+                        <option value="@t" selected="@(ViewBag.EntityTypeFilter == t)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a asp-action="ActivityLog" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card table-card">
@@ -21,13 +61,14 @@
             <tbody>
                 @foreach (var log in Model)
                 {
+                    var (abg, afg) = ActivityColor(log.Action);
                     <tr>
                         <td class="text-muted text-nowrap">
                             @log.Timestamp.ToLocalTime().ToString("dd MMM yyyy HH:mm")
                         </td>
                         <td class="fw-semibold">@log.UserName</td>
                         <td>
-                            <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-weight:500;font-size:.8rem;">@log.Action</span>
+                            <span class="badge" style="background:@abg;color:@afg;font-weight:500;font-size:.8rem;">@log.Action</span>
                         </td>
                         <td class="text-muted">@log.EntityType</td>
                         <td class="text-muted">@(log.Details ?? "—")</td>
@@ -35,7 +76,7 @@
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="5" class="text-center text-muted py-5">No activity recorded yet.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-5">No activity found matching your filters.</td></tr>
                 }
             </tbody>
         </table>
@@ -48,11 +89,11 @@
             <div class="d-flex gap-2">
                 @if (ViewBag.Page > 1)
                 {
-                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page - 1)" class="btn btn-sm btn-outline-secondary">← Prev</a>
+                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page - 1)" asp-route-search="@ViewBag.Search" asp-route-entityType="@ViewBag.EntityTypeFilter" class="btn btn-sm btn-outline-secondary">← Prev</a>
                 }
                 @if (ViewBag.Page < ViewBag.TotalPages)
                 {
-                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page + 1)" class="btn btn-sm btn-outline-secondary">Next →</a>
+                    <a asp-action="ActivityLog" asp-route-page="@(ViewBag.Page + 1)" asp-route-search="@ViewBag.Search" asp-route-entityType="@ViewBag.EntityTypeFilter" class="btn btn-sm btn-outline-secondary">Next →</a>
                 }
             </div>
         </div>

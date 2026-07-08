@@ -345,6 +345,15 @@ namespace PropertyManagementPortal.Controllers
                 })
                 .ToListAsync();
 
+            // Overdue is derived, not stored: a Pending payment past its due date
+            // displays as overdue. Mirrors ManagerController's derive-on-read logic.
+            var today = DateTime.UtcNow.Date;
+            foreach (var p in payments)
+            {
+                if (p.Status == "Pending" && p.DueDate.Date < today)
+                    p.Status = "Overdue";
+            }
+
             return View(payments);
         }
 
