@@ -1,0 +1,28 @@
+@model PropertyManagementPortal.ViewModels.Manager.PaginatedViewModel
+@{
+    // Preserve every current query-string value (status, propertyId, search, ...)
+    // except "page", so navigating pages keeps the active filters.
+    var preserved = string.Join("&", Context.Request.Query
+        .Where(q => q.Key != "page")
+        .Select(q => $"{q.Key}={Uri.EscapeDataString(q.Value.ToString())}"));
+    var prefix = string.IsNullOrEmpty(preserved) ? "?" : $"?{preserved}&";
+}
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                <a class="page-link" href="@(prefix)page=@(Model.CurrentPage - 1)">Previous</a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link" href="@(prefix)page=@i">@i</a>
+                </li>
+            }
+            <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                <a class="page-link" href="@(prefix)page=@(Model.CurrentPage + 1)">Next</a>
+            </li>
+        </ul>
+    </nav>
+}
