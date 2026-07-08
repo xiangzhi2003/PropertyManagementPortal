@@ -72,16 +72,6 @@
 
         <div class="d-flex flex-column gap-2">
             <a asp-action="EditUser" asp-route-id="@Model.Id" class="btn btn-primary btn-lg">Edit User</a>
-            @if (ViewBag.Role != "Admin")
-            {
-                <form asp-action="ToggleUserStatus" asp-route-id="@Model.Id" method="post">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-lg w-100 @(Model.IsActive ? "btn-outline-warning" : "btn-outline-success")"
-                            onclick="return confirm('@(Model.IsActive ? "Deactivate" : "Activate") this user?')">
-                        @(Model.IsActive ? "Deactivate Account" : "Activate Account")
-                    </button>
-                </form>
-            }
         </div>
     </div>
 </div>

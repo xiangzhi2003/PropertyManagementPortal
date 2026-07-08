@@ -4,32 +4,53 @@
     ViewData["Title"] = "Register";
 }
 
-<h1>@ViewData["Title"]</h1>
-<h2 id="external-login-title">Associate your @Model.ProviderDisplayName account.</h2>
-<hr />
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="#1e3a5f" viewBox="0 0 16 16" class="mb-2">
+                        <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+                        <path d="M13 7.293V13.5a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-3h-2v3a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5V7.293l7-7z"/>
+                    </svg>
+                    <h3 class="fw-bold mb-0">Almost there</h3>
+                    <p class="text-muted" style="font-size:.9rem;">
+                        Confirm your details to finish signing up with @Model.ProviderDisplayName
+                    </p>
+                </div>
 
-<p id="external-login-description" class="text-info">
-    You've successfully authenticated with <strong>@Model.ProviderDisplayName</strong>.
-    Please enter an email address for this site below and click the Register button to finish
-    logging in.
-</p>
+                <div class="alert alert-info d-flex align-items-start gap-2" role="alert" style="font-size:.85rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="mt-1 flex-shrink-0">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+                    </svg>
+                    <span>
+                        You've successfully authenticated with <strong>@Model.ProviderDisplayName</strong>.
+                        Just confirm your name and email below to finish creating your account.
+                    </span>
+                </div>
 
-<div class="row">
-    <div class="col-md-4">
-        <form asp-page-handler="Confirmation" asp-route-returnUrl="@Model.ReturnUrl" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.FullName" class="form-control" autocomplete="name" placeholder="Full name" />
-                <label asp-for="Input.FullName" class="form-label"></label>
-                <span asp-validation-for="Input.FullName" class="text-danger"></span>
+                <form asp-page-handler="Confirmation" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.FullName" class="form-control" autocomplete="name" aria-required="true" placeholder="Full Name" />
+                        <label asp-for="Input.FullName">Full Name</label>
+                        <span asp-validation-for="Input.FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input asp-for="Input.Email" class="form-control" autocomplete="email" aria-required="true" placeholder="name@example.com" />
+                        <label asp-for="Input.Email">Email address</label>
+                        <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="w-100 btn btn-primary py-2 fw-semibold">Complete Registration</button>
+                </form>
+
+                <p class="text-center text-muted mt-4 mb-0" style="font-size:.9rem;">
+                    Already have an account?
+                    <a asp-page="./Login" class="fw-semibold text-decoration-none">Log in</a>
+                </p>
             </div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Email" class="form-control" autocomplete="email" placeholder="Please enter your email."/>
-                <label asp-for="Input.Email" class="form-label"></label>
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </form>
+        </div>
     </div>
 </div>
 
