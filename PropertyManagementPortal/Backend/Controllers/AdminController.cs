@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
 using PropertyManagementPortal.ViewModels.Admin;
+using System.Net.Http.Json;
 
 namespace PropertyManagementPortal.Controllers
 {
@@ -13,11 +14,16 @@ namespace PropertyManagementPortal.Controllers
     public class AdminController : AppControllerBase
     {
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
-        public AdminController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public AdminController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
+            IHttpClientFactory httpClientFactory, IConfiguration configuration)
             : base(db, userManager)
         {
             _roleManager = roleManager;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
         }
 
         private async Task LogAsync(string action, string entityType, string? entityId = null, string? details = null)
@@ -261,6 +267,252 @@ namespace PropertyManagementPortal.Controllers
 
             return View(vm);
         }
+
+        // ── AI Property Report Summary ──────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateAiSummary()
+        {
+            var apiKey = _configuration["Gemini:ApiKey"];
+            if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("YOUR_") || apiKey.StartsWith("PASTE_"))
+                return Json(new { error = "Gemini API key is not configured. Add it to appsettings.json under Gemini:ApiKey." });
+
+            var today = DateTime.UtcNow.Date;
+
+            // ── Gather the full portfolio picture ───────────────────────────────
+            var properties = await _db.Properties
+                .Include(p => p.Manager)
+                .Include(p => p.Units)
+                .ToListAsync();
+
+            var totalProperties = properties.Count;
+            var totalUnits = properties.Sum(p => p.Units.Count);
+            var occupiedUnits = properties.Sum(p => p.Units.Count(u => u.Status == "Occupied"));
+            var vacantUnits = totalUnits - occupiedUnits;
+            var occupancyRate = totalUnits == 0 ? 0 : Math.Round((double)occupiedUnits / totalUnits * 100, 1);
+
+            // Approved tenancies → active tenants (overall + per property)
+            var approvedTenancies = await _db.Tenancies
+                .Where(t => t.Status == "Approved")
+                .Select(t => new { t.TenantId, t.Unit.PropertyId })
+                .ToListAsync();
+            var activeTenants = approvedTenancies.Select(t => t.TenantId).Distinct().Count();
+
+            // Payments (overdue is derived, per property + overall)
+            var totalPayments = await _db.Payments.CountAsync();
+            var paidPayments = await _db.Payments.CountAsync(p => p.Status == "Paid");
+            var unpaid = await _db.Payments
+                .Where(p => p.Status == "Pending")
+                .Select(p => new { p.DueDate, p.Amount, p.Tenancy.Unit.PropertyId })
+                .ToListAsync();
+            var overdue = unpaid.Where(x => x.DueDate.Date < today).ToList();
+            var overdueCount = overdue.Count;
+            var overdueAmount = overdue.Sum(x => x.Amount);
+            var pendingCount = unpaid.Count - overdueCount;
+            var collectionRate = totalPayments == 0 ? 0 : Math.Round((double)paidPayments / totalPayments * 100, 1);
+
+            // Maintenance (open per property + per staff)
+            var submittedCount = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Submitted");
+            var assignedCount = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Assigned");
+            var inProgressCount = await _db.MaintenanceRequests.CountAsync(m => m.Status == "InProgress");
+            var completedCount = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed");
+            var openMaintenance = await _db.MaintenanceRequests
+                .Where(m => m.Status != "Completed")
+                .Select(m => new { m.Unit.PropertyId, m.AssignedStaffId })
+                .ToListAsync();
+            var completedByStaff = (await _db.MaintenanceRequests
+                .Where(m => m.Status == "Completed" && m.AssignedStaffId != null)
+                .GroupBy(m => m.AssignedStaffId)
+                .Select(g => new { StaffId = g.Key, Count = g.Count() })
+                .ToListAsync())
+                .ToDictionary(x => x.StaffId!, x => x.Count);
+
+            // Team
+            var managers = await _userManager.GetUsersInRoleAsync("PropertyManager");
+            var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
+
+            // Per-property factual rows
+            var propertyRows = properties.Select(p => new
+            {
+                name = p.Name,
+                manager = p.Manager != null ? p.Manager.FullName : "Unassigned",
+                units = p.Units.Count,
+                occupied = p.Units.Count(u => u.Status == "Occupied"),
+                tenants = approvedTenancies.Where(t => t.PropertyId == p.PropertyId).Select(t => t.TenantId).Distinct().Count(),
+                overdue = overdue.Count(x => x.PropertyId == p.PropertyId),
+                openMaintenance = openMaintenance.Count(x => x.PropertyId == p.PropertyId)
+            }).ToList();
+
+            var managerRows = managers.Select(m => new
+            {
+                name = m.FullName,
+                properties = properties.Count(p => p.ManagerId == m.Id),
+                units = properties.Where(p => p.ManagerId == m.Id).Sum(p => p.Units.Count)
+            }).ToList();
+
+            var staffRows = staff.Select(s => new
+            {
+                name = s.FullName,
+                openJobs = openMaintenance.Count(x => x.AssignedStaffId == s.Id),
+                completed = completedByStaff.GetValueOrDefault(s.Id, 0)
+            }).ToList();
+
+            // Factual data block returned to the client and rendered as tables (100%
+            // accurate — the AI narrative is layered on top, never replaces these numbers).
+            var facts = new
+            {
+                totalProperties,
+                totalUnits,
+                occupiedUnits,
+                vacantUnits,
+                occupancyRate,
+                activeTenants,
+                totalManagers = managers.Count,
+                totalStaff = staff.Count,
+                totalPayments,
+                paidPayments,
+                pendingCount,
+                overdueCount,
+                overdueAmount,
+                collectionRate,
+                submittedCount,
+                assignedCount,
+                inProgressCount,
+                completedCount,
+                properties = propertyRows,
+                managers = managerRows,
+                staff = staffRows
+            };
+
+            var occupancyRateStr = totalUnits == 0 ? "n/a" : $"{occupancyRate}%";
+            var collectionRateStr = totalPayments == 0 ? "n/a" : $"{collectionRate}%";
+
+            var propertyLines = propertyRows.Count == 0
+                ? "  (no properties registered yet)"
+                : string.Join("\n", propertyRows.Select(p =>
+                    $"  - \"{p.name}\" (manager: {p.manager}): {p.units} units, {p.occupied} occupied, {p.tenants} active tenants, {p.overdue} overdue payments, {p.openMaintenance} open maintenance requests."));
+            var managerLines = managerRows.Count == 0
+                ? "  (no property managers)"
+                : string.Join("\n", managerRows.Select(m => $"  - {m.name}: manages {m.properties} propert(y/ies), {m.units} units."));
+            var staffLines = staffRows.Count == 0
+                ? "  (no maintenance staff)"
+                : string.Join("\n", staffRows.Select(s => $"  - {s.name}: {s.openJobs} open job(s), {s.completed} completed."));
+
+            var prompt = $"""
+                You are a senior property-management operations analyst preparing an executive briefing for the portfolio administrator.
+                Analyse the real portfolio data below and produce a professional, structured status report the administrator can read at a glance to understand everything happening across the portfolio.
+
+                Guidelines:
+                - Write in a confident, professional, executive tone — like a real operations report, not casual chat.
+                - Base every statement strictly on the data provided. Never invent figures, names, or properties not listed.
+                - Refer to specific properties, managers, and staff by name where it adds insight (e.g. which property has overdue payments, which manager oversees it, which staff member is overloaded or idle).
+                - For each operational area (Occupancy, Rent Collection, Maintenance), assess its health and explain WHY in 2-3 sentences, citing the relevant numbers and naming the specific properties/people involved where relevant.
+                - Choose a status for each area: "Good" (healthy), "Warning" (needs monitoring), or "Critical" (needs immediate action). Judge realistically — any overdue payments or unassigned maintenance are at least a Warning; a large overdue share, low occupancy, or an unassigned property manager is Critical.
+                - The executive summary should be 3-4 sentences giving the whole portfolio picture at a glance, including the scale (properties, units, tenants) and the single most important thing needing attention.
+                - overallHealth is a short verdict: "Excellent", "Good", "Fair", or "Needs Attention".
+                - priorityActions: 3-5 concrete, specific next steps ordered most-urgent first, naming the specific property/manager/staff involved (e.g. "Follow up on the 3 overdue accounts at Sunrise Condo"). If everything is healthy, give proactive suggestions instead.
+
+                PORTFOLIO OVERVIEW
+                - Properties: {totalProperties}. Units: {totalUnits} ({occupiedUnits} occupied, {vacantUnits} vacant, {occupancyRateStr} occupancy). Active tenants: {activeTenants}.
+                - Team: {managers.Count} property manager(s), {staff.Count} maintenance staff.
+                - Rent collection: {totalPayments} total payment records — {paidPayments} paid ({collectionRateStr} collection rate), {pendingCount} pending (not yet due), {overdueCount} overdue totalling RM {overdueAmount:N2}.
+                - Maintenance: {submittedCount} submitted but unassigned, {assignedCount} assigned, {inProgressCount} in progress, {completedCount} completed.
+
+                PER-PROPERTY BREAKDOWN
+                {propertyLines}
+
+                PROPERTY MANAGERS
+                {managerLines}
+
+                MAINTENANCE STAFF
+                {staffLines}
+                """;
+
+            // Force Gemini to return JSON matching this shape, so we can render it as a
+            // styled report (badges, section cards, action list) instead of raw text.
+            var responseSchema = new
+            {
+                type = "object",
+                properties = new
+                {
+                    executiveSummary = new { type = "string" },
+                    overallHealth = new { type = "string", @enum = new[] { "Excellent", "Good", "Fair", "Needs Attention" } },
+                    sections = new
+                    {
+                        type = "array",
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                title = new { type = "string" },
+                                status = new { type = "string", @enum = new[] { "Good", "Warning", "Critical" } },
+                                insight = new { type = "string" }
+                            },
+                            required = new[] { "title", "status", "insight" }
+                        }
+                    },
+                    priorityActions = new { type = "array", items = new { type = "string" } }
+                },
+                required = new[] { "executiveSummary", "overallHealth", "sections", "priorityActions" }
+            };
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new { parts = new[] { new { text = prompt } } }
+                    },
+                    generationConfig = new
+                    {
+                        responseMimeType = "application/json",
+                        responseSchema
+                    }
+                };
+
+                var response = await client.PostAsJsonAsync(
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={apiKey}",
+                    requestBody);
+
+                if (!response.IsSuccessStatusCode)
+                    return Json(new { error = $"Gemini API request failed ({(int)response.StatusCode})." });
+
+                using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                var reportJson = doc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text")
+                    .GetString();
+
+                if (string.IsNullOrWhiteSpace(reportJson))
+                    return Json(new { error = "The AI returned an empty report. Please try again." });
+
+                // Deserialize into a strong type so it survives past this method's scope
+                // (a raw JsonElement would be tied to the disposed JsonDocument).
+                var report = System.Text.Json.JsonSerializer.Deserialize<AiReport>(reportJson, _aiJsonOptions);
+
+                return Json(new { report, facts });
+            }
+            catch (Exception)
+            {
+                return Json(new { error = "Could not reach the AI service. Please try again." });
+            }
+        }
+
+        private static readonly System.Text.Json.JsonSerializerOptions _aiJsonOptions =
+            new() { PropertyNameCaseInsensitive = true };
+
+        private record AiReport(
+            string ExecutiveSummary,
+            string OverallHealth,
+            List<AiReportSection> Sections,
+            List<string> PriorityActions);
+
+        private record AiReportSection(string Title, string Status, string Insight);
 
         // Old bookmarks/links to /Admin/Reports still work — Reports is now part of Dashboard.
         public IActionResult Reports() => RedirectToAction(nameof(Dashboard));
