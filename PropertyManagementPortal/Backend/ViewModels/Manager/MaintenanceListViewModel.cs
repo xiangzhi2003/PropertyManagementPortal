@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
  
 namespace PropertyManagementPortal.ViewModels.Manager
 {
-    public class MaintenanceListViewModel
+    public class MaintenanceListViewModel : PaginatedViewModel
     {
         public List<MaintenanceRowViewModel> Requests { get; set; } = new();
  
