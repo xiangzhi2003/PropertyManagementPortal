@@ -35,6 +35,26 @@
     </div>
 </div>
 
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="section-heading mb-3">Payments by Status</h6>
+                <div style="height:260px;"><canvas id="statusChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="section-heading mb-3">Collected vs Outstanding (RM)</h6>
+                <div style="height:260px;"><canvas id="amountChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Filter bar -->
 <div class="card mb-3">
     <div class="card-body">
@@ -66,64 +86,140 @@
 <!-- Payments table -->
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-hover align-middle mb-0">
-            <thead style="background:#f8fafc;">
-                <tr>
-                    <th class="ps-3">Tenant</th>
-                    <th>Property / Unit</th>
-                    <th>Amount</th>
-                    <th>Due Date</th>
-                    <th>Paid Date</th>
-                    <th>Status</th>
-                    <th class="text-end pe-3">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.Payments.Any())
-                {
-                    <tr><td colspan="7" class="text-center text-muted py-4">No payments found.</td></tr>
-                }
-                else
-                {
-                    @foreach (var p in Model.Payments)
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#f8fafc;">
+                    <tr>
+                        <th class="ps-3">Tenant</th>
+                        <th>Property / Unit</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Paid Date</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Payments.Any())
                     {
-                        var (bg, fg) = p.Status switch
-                        {
-                            "Paid" => ("#dcfce7", "#16a34a"),
-                            "Overdue" => ("#fee2e2", "#dc2626"),
-                            _ => ("#fef3c7", "#d97706")
-                        };
-                        <tr>
-                            <td class="ps-3 fw-semibold">@p.TenantName</td>
-                            <td>
-                                <div class="fw-semibold">@p.PropertyName</div>
-                                <div class="text-muted" style="font-size:.8rem;">Unit @p.UnitNumber</div>
-                            </td>
-                            <td class="fw-semibold">RM @p.Amount.ToString("N2")</td>
-                            <td class="small @(p.Status == "Overdue" ? "text-danger fw-semibold" : "")">
-                                @p.DueDate.ToString("dd MMM yyyy")
-                            </td>
-                            <td class="small">@(p.PaymentDate.HasValue ? p.PaymentDate.Value.ToString("dd MMM yyyy") : "—")</td>
-                            <td><span class="badge" style="background:@bg;color:@fg;">@p.Status</span></td>
-                            <td class="text-end pe-3">
-                                @if (p.Status != "Paid")
-                                {
-                                    <form method="post" asp-action="MarkPaid" class="d-inline"
-                                          onsubmit="return confirm('Mark this payment as received today?');">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@p.PaymentId" />
-                                        <button type="submit" class="btn btn-sm btn-success">Mark as Received</button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">&mdash;</span>
-                                }
-                            </td>
-                        </tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">No payments found.</td></tr>
                     }
-                }
-            </tbody>
-        </table>
+                    else
+                    {
+                        @foreach (var p in Model.Payments)
+                        {
+                            var (bg, fg) = p.Status switch
+                            {
+                                "Paid" => ("#dcfce7", "#16a34a"),
+                                "Overdue" => ("#fee2e2", "#dc2626"),
+                                _ => ("#fef3c7", "#d97706")
+                            };
+                            <tr>
+                                <td class="ps-3 fw-semibold">@p.TenantName</td>
+                                <td>
+                                    <div class="fw-semibold">@p.PropertyName</div>
+                                    <div class="text-muted" style="font-size:.8rem;">Unit @p.UnitNumber</div>
+                                </td>
+                                <td class="fw-semibold">RM @p.Amount.ToString("N2")</td>
+                                <td class="small @(p.Status == "Overdue" ? "text-danger fw-semibold" : "")">
+                                    @p.DueDate.ToString("dd MMM yyyy")
+                                </td>
+                                <td class="small">@(p.PaymentDate.HasValue ? p.PaymentDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                                <td><span class="badge" style="background:@bg;color:@fg;">@p.Status</span></td>
+                                <td class="text-end pe-3">
+                                    @if (p.Status != "Paid")
+                                    {
+                                        <button type="button" class="btn btn-sm btn-success"
+                                            data-bs-toggle="modal" data-bs-target="#payModal-@p.PaymentId">
+                                        Mark as Received
+                                    </button>
+
+                                    <!-- Mark-as-received modal -->
+                                    <div class="modal fade" id="payModal-@p.PaymentId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content text-start">
+                                                <form method="post" asp-action="MarkPaid">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@p.PaymentId" />
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Record Payment</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p class="small text-muted mb-3">
+                                                            <strong>@p.TenantName</strong> — Unit @p.UnitNumber, RM @p.Amount.ToString("N2")
+                                                        </p>
+                                                        <label class="form-label">Payment date</label>
+                                                        <input type="date" name="paymentDate" class="form-control"
+                                                            value="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+                                                            max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required />
+                                                        <span class="text-muted" style="font-size:.8rem;">Defaults to today. Change it if the tenant paid on a different day.</span>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-success">Confirm Payment</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">&mdash;</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        // Payments by status (counts)
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Pending', 'Overdue'],
+                datasets: [{
+                    data: [@Model.PaidCount, @Model.PendingCount, @Model.OverdueCount],
+                    backgroundColor: ['#16a34a', '#d97706', '#dc2626'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // Collected vs outstanding (amounts)
+        new Chart(document.getElementById('amountChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Collected', 'Outstanding'],
+                datasets: [{
+                    label: 'Amount (RM)',
+                    data: [
+                        @Model.PaidAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        @Model.OutstandingAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ],
+                    backgroundColor: ['#16a34a', '#dc2626'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+}

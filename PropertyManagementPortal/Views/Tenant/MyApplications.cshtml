@@ -26,7 +26,7 @@
 else
 {
     <div class="card shadow-sm">
-        <div class="card-body p-0">
+        <div class="table-responsive">
 
             <table class="table table-hover align-middle mb-0">
 
@@ -103,11 +103,47 @@ else
                         </td>
 
                         <td>
-                            <span class="badge"
-                                  style="background:@bg;color:@fg;">
-                                @item.Status
-                            </span>
-                        </td>
+                            @if (item.Status == "Approved")
+                            {
+                                var payment = item.Payments.FirstOrDefault();
+
+                                if (payment == null || payment.Status != "Paid")
+                                {
+                                    <span class="badge"
+                                        style="background:#dcfce7;color:#16a34a;">
+                                        Approved
+                                    </span>
+
+                                    <br />
+
+                                    <small class="text-warning">
+                                        Awaiting payment
+                                    </small>
+                                }
+                                else
+                                {
+                                    <span class="badge"
+                                        style="background:#dcfce7;color:#16a34a;">
+                                        Active
+                                    </span>
+                                }
+                            }
+                            else if (item.Status == "Rejected")
+                            {
+                                <span class="badge"
+                                    style="background:#fee2e2;color:#dc2626;">
+                                    Rejected
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge"
+                                    style="background:#fef3c7;color:#d97706;">
+                                    Pending
+                                </span>
+                            }
+
+                            </td>
 
                     </tr>
                 }

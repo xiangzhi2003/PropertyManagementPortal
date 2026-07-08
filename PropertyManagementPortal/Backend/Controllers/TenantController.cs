@@ -6,15 +6,20 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
 using PropertyManagementPortal.ViewModels.Tenant;
+using Stripe;
+using Stripe.Checkout;
 
 namespace PropertyManagementPortal.Controllers
 {
     [Authorize(Roles = "Tenant")]
     public class TenantController : AppControllerBase
     {
-        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        private readonly IConfiguration _configuration;
+
+        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration configuration)
         : base(db, userManager)
         {
+            _configuration = configuration;
         }
 
         public async Task<IActionResult> Dashboard()
@@ -32,7 +37,7 @@ namespace PropertyManagementPortal.Controllers
             var currentTenancy = await _db.Tenancies
                 .Include(t => t.Unit)
                 .ThenInclude(u => u.Property)
-                .Where(t => t.TenantId == user.Id && t.Status == "Approved")
+                .Where(t => t.TenantId == user.Id && t.Status == "Approved" && t.Payments.Any(p => p.Status == "Paid"))
                 .ToListAsync();
             var unitCount = await _db.Units
                 .CountAsync(u => u.Status == "Vacant");
@@ -121,7 +126,7 @@ namespace PropertyManagementPortal.Controllers
                 UnitNumber = unit.UnitNumber,
                 RentAmount = unit.RentAmount,
                 Floor = unit.Floor,
-                Description = unit.Description ?? "",
+                Description = unit.Description ?? "No description",
                 StartDate = DateTime.Today,
                 EndDate = DateTime.Today
             };
@@ -190,6 +195,7 @@ namespace PropertyManagementPortal.Controllers
             var applications = await _db.Tenancies
                 .Include(a => a.Unit)
                 .ThenInclude(u => u.Property)
+                .Include(t => t.Payments)
                 .Where(a => a.TenantId == user.Id)
                 .ToListAsync();
 
@@ -319,6 +325,7 @@ namespace PropertyManagementPortal.Controllers
                 .OrderByDescending(p => p.DueDate)
                 .Select(p => new PaymentViewModel
                 {
+                    PaymentId = p.PaymentId,
                     PropertyName = p.Tenancy.Unit.Property.Name,
                     UnitNumber = p.Tenancy.Unit.UnitNumber,
                     Amount = p.Amount,
@@ -329,6 +336,94 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
 
             return View(payments);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Checkout(int paymentId)
+        {
+            var payment = await _db.Payments
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+            if (payment == null)
+                return NotFound();
+
+            StripeConfiguration.ApiKey =
+                _configuration["Stripe:SecretKey"];
+
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string>
+                {
+                    "card"
+                },
+
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        Quantity = 1,
+
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = "myr",
+
+                            UnitAmount =
+                                (long)(payment.Amount * 100),
+
+                            ProductData =
+                                new SessionLineItemPriceDataProductDataOptions
+                                {
+                                    Name =
+                                        $"Rent Payment #{payment.PaymentId}"
+                                }
+                        }
+                    }
+                },
+
+                Mode = "payment",
+
+                SuccessUrl =
+                    Url.Action(
+                        "PaymentSuccess",
+                        "Tenant",
+                        new { paymentId = payment.PaymentId },
+                        Request.Scheme),
+
+                CancelUrl =
+                    Url.Action(
+                        "MyPayments",
+                        "Tenant",
+                        null,
+                        Request.Scheme)
+            };
+
+            var service = new SessionService();
+
+            var session =
+                await service.CreateAsync(options);
+
+            return Redirect(session.Url);
+        }
+
+        public async Task<IActionResult> PaymentSuccess(int paymentId)
+        {
+            var payment = await _db.Payments
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+            if (payment == null)
+                return NotFound();
+
+            payment.Status = "Paid";
+
+            payment.PaymentDate = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] =
+                "Payment completed successfully.";
+
+            return RedirectToAction(nameof(MyPayments));
         }
     }
 }
