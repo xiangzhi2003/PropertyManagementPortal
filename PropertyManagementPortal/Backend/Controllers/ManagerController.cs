@@ -58,12 +58,16 @@ namespace PropertyManagementPortal.Controllers
             var pendingApplications = await _db.Tenancies
                 .CountAsync(t => unitIds.Contains(t.UnitId) && t.Status == "Pending");
  
-            var pendingPayments = await _db.Payments
-                .CountAsync(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Pending");
- 
-            var overduePayments = await _db.Payments
-                .CountAsync(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Overdue");
- 
+            // Overdue is derived, not stored: a Pending payment past its due date counts
+            // as overdue. Mirrors the same derive-on-read logic used on the Payments page.
+            var todayForPayments = DateTime.UtcNow.Date;
+            var pendingDueDates = await _db.Payments
+                .Where(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Pending")
+                .Select(p => p.DueDate)
+                .ToListAsync();
+            var overduePayments = pendingDueDates.Count(d => d.Date < todayForPayments);
+            var pendingPayments = pendingDueDates.Count - overduePayments;
+
             var unassignedMaintenance = await _db.MaintenanceRequests
                 .CountAsync(m => unitIds.Contains(m.UnitId) && m.AssignedStaffId == null);
  

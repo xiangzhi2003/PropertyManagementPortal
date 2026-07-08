@@ -1,0 +1,142 @@
+@model PropertyManagementPortal.ViewModels.Admin.GlobalSearchViewModel
+@{ ViewData["Title"] = "Search"; }
+
+<div class="page-header">
+    <h3>Search Results</h3>
+    <p>Results across users, properties, and payments for "<strong>@Model.Query</strong>"</p>
+</div>
+
+@if (string.IsNullOrWhiteSpace(Model.Query))
+{
+    <p class="text-muted">Enter a search term in the header search box to get started.</p>
+}
+else if (!Model.HasResults)
+{
+    <div class="card">
+        <div class="card-body p-4 text-center text-muted py-5">
+            No users, properties, or payments matched "<strong>@Model.Query</strong>".
+        </div>
+    </div>
+}
+else
+{
+    @if (Model.Users.Any())
+    {
+        <div class="card mb-4">
+            <div class="px-4 py-3 border-bottom">
+                <h6 class="section-heading mb-0">Users (@Model.Users.Count)</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.Users)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@u.FullName</td>
+                                <td class="text-muted">@u.Email</td>
+                                <td>@u.Role</td>
+                                <td>
+                                    @if (u.IsActive)
+                                    { <span class="badge bg-success">Active</span> }
+                                    else
+                                    { <span class="badge bg-secondary">Inactive</span> }
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="ViewUser" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (Model.Properties.Any())
+    {
+        <div class="card mb-4">
+            <div class="px-4 py-3 border-bottom">
+                <h6 class="section-heading mb-0">Properties (@Model.Properties.Count)</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Property Name</th>
+                            <th>Address</th>
+                            <th>Manager</th>
+                            <th>Units</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Properties)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@p.Name</td>
+                                <td class="text-muted">@p.Address</td>
+                                <td class="text-muted">@(p.Manager?.FullName ?? "—")</td>
+                                <td>@p.Units.Count</td>
+                                <td class="text-end">
+                                    <a asp-action="ViewProperty" asp-route-id="@p.PropertyId" class="btn btn-sm btn-outline-secondary">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (Model.Payments.Any())
+    {
+        <div class="card mb-4">
+            <div class="px-4 py-3 border-bottom">
+                <h6 class="section-heading mb-0">Unpaid Payments (@Model.Payments.Count)</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Property / Unit</th>
+                            <th>Manager</th>
+                            <th class="text-end">Amount</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Payments)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="ViewUser" asp-route-id="@p.TenantId" class="text-decoration-none">@p.TenantName</a>
+                                </td>
+                                <td class="text-muted">@p.PropertyName &middot; Unit @p.UnitNumber</td>
+                                <td class="text-muted">@(p.ManagerName ?? "—")</td>
+                                <td class="text-end">RM @p.Amount.ToString("N2")</td>
+                                <td>@p.DueDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    @if (p.Status == "Overdue")
+                                    { <span class="badge bg-danger">Overdue</span> }
+                                    else
+                                    { <span class="badge bg-warning text-dark">Pending</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

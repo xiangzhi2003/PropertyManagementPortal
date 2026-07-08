@@ -1,11 +1,33 @@
+@using Microsoft.AspNetCore.Identity
+@using PropertyManagementPortal.Models
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Home";
+
+    string? welcomeName = null;
+    string? welcomeRole = null;
+    if (User.Identity!.IsAuthenticated)
+    {
+        var currentUser = await UserManager.GetUserAsync(User);
+        welcomeName = currentUser?.FullName;
+        welcomeRole = User.IsInRole("Admin") ? "Admin"
+            : User.IsInRole("PropertyManager") ? "Property Manager"
+            : User.IsInRole("MaintenanceStaff") ? "Maintenance Staff"
+            : "Tenant";
+    }
 }
 
 <div class="hero">
     <div class="container">
         <h1>Property Management Portal</h1>
         <p>A centralized platform to manage properties, tenants, maintenance requests, and payments — all in one place.</p>
+        @if (User.Identity!.IsAuthenticated)
+        {
+            <p class="fw-semibold mb-4" style="font-size:1.15rem;">
+                Welcome back, @welcomeName
+                <span class="badge bg-light text-dark ms-1" style="font-size:.75rem;vertical-align:middle;">@welcomeRole</span>
+            </p>
+        }
         @if (!User.Identity!.IsAuthenticated)
         {
             <div class="d-flex gap-3 justify-content-center flex-wrap">

@@ -35,9 +35,15 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                <ul class="navbar-nav flex-grow-1">
+                <ul class="navbar-nav flex-grow-1 align-items-center">
                     <li class="nav-item">
                         <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                    </li>
+                    <li class="nav-item flex-grow-1" style="max-width:340px;">
+                        <form asp-controller="Admin" asp-action="GlobalSearch" method="get" class="ms-lg-2">
+                            <input type="search" name="q" class="form-control form-control-sm" placeholder="Search users, properties, payments..."
+                                   value="@(ViewContext.RouteData.Values["action"]?.ToString() == "GlobalSearch" ? Context.Request.Query["q"].ToString() : "")" />
+                        </form>
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">

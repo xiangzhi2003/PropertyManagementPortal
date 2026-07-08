@@ -6,7 +6,10 @@
         <h3>Manage Users</h3>
         <p>View, create and manage all portal users</p>
     </div>
-    <a asp-action="CreateUser" class="btn btn-primary px-4">+ Add User</a>
+    <div class="d-flex gap-2">
+        <a asp-action="ExportUsers" class="btn btn-outline-secondary">Export CSV</a>
+        <a asp-action="CreateUser" class="btn btn-primary px-4">+ Add User</a>
+    </div>
 </div>
 
 <div class="card mb-4">

@@ -6,7 +6,10 @@
         <h3>Manage Properties</h3>
         <p>Oversee all registered properties and their units</p>
     </div>
-    <a asp-action="AddProperty" class="btn btn-primary px-4">+ Add Property</a>
+    <div class="d-flex gap-2">
+        <a asp-action="ExportProperties" class="btn btn-outline-secondary">Export CSV</a>
+        <a asp-action="AddProperty" class="btn btn-primary px-4">+ Add Property</a>
+    </div>
 </div>
 
 <div class="card mb-4">

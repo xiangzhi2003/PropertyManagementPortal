@@ -172,16 +172,13 @@
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-body p-4">
-                <h6 class="section-heading mb-1">Payment Summary</h6>
+                <div class="d-flex justify-content-between align-items-start">
+                    <h6 class="section-heading mb-1">Payment Summary</h6>
+                    <a asp-action="ExportPayments" class="btn btn-outline-secondary btn-sm">Export CSV</a>
+                </div>
                 <p class="text-muted mb-3" style="font-size:.82rem;">@Model.TotalPayments total payment record(s)</p>
                 @{
-                    var paymentPoints = new (string Label, int Count, string Color)[]
-                    {
-                        ("Paid", Model.PaidPayments, "#16a34a"),
-                        ("Pending", Model.PendingPayments, "#d97706"),
-                        ("Overdue", Model.OverduePayments, "#dc2626")
-                    };
-                    var maxPayment = paymentPoints.Max(p => p.Count);
+                    var maxPayment = new[] { Model.PaidPayments, Model.PendingPayments, Model.OverduePayments }.Max();
                 }
                 @if (maxPayment == 0)
                 {
@@ -189,16 +186,8 @@
                 }
                 else
                 {
-                    <div class="bar-chart" style="height:@(plotHeight + 44)px;" role="img" aria-label="Payment summary by status">
-                        @foreach (var p in paymentPoints)
-                        {
-                            var barPx = (int)Math.Round(p.Count / (double)maxPayment * plotHeight);
-                            <div class="bar-col" title="@p.Label: @p.Count">
-                                <div class="bar-value">@p.Count</div>
-                                <div class="bar-fill" style="height:@(barPx)px;background:@p.Color;"></div>
-                                <div class="bar-label">@p.Label</div>
-                            </div>
-                        }
+                    <div style="height:@(plotHeight + 44)px;">
+                        <canvas id="paymentStatusChart" role="img" aria-label="Payment summary by status"></canvas>
                     </div>
                 }
 
@@ -258,14 +247,7 @@
                 <h6 class="section-heading mb-1">Maintenance Summary</h6>
                 <p class="text-muted mb-3" style="font-size:.82rem;">Requests grouped by current status</p>
                 @{
-                    var maintenancePoints = new (string Label, int Count, string Color)[]
-                    {
-                        ("Submitted", Model.SubmittedRequests, "#d97706"),
-                        ("Assigned", Model.AssignedRequests, "#2563eb"),
-                        ("In Progress", Model.InProgressRequests, "#7c3aed"),
-                        ("Completed", Model.CompletedRequests, "#16a34a")
-                    };
-                    var maxMaintenance = maintenancePoints.Max(p => p.Count);
+                    var maxMaintenance = new[] { Model.SubmittedRequests, Model.AssignedRequests, Model.InProgressRequests, Model.CompletedRequests }.Max();
                 }
                 @if (maxMaintenance == 0)
                 {
@@ -273,16 +255,8 @@
                 }
                 else
                 {
-                    <div class="bar-chart" style="height:@(plotHeight + 44)px;" role="img" aria-label="Maintenance requests by status">
-                        @foreach (var p in maintenancePoints)
-                        {
-                            var barPx = (int)Math.Round(p.Count / (double)maxMaintenance * plotHeight);
-                            <div class="bar-col" title="@p.Label: @p.Count">
-                                <div class="bar-value">@p.Count</div>
-                                <div class="bar-fill" style="height:@(barPx)px;background:@p.Color;"></div>
-                                <div class="bar-label">@p.Label</div>
-                            </div>
-                        }
+                    <div style="height:@(plotHeight + 44)px;">
+                        <canvas id="maintenanceStatusChart" role="img" aria-label="Maintenance requests by status"></canvas>
                     </div>
                 }
 
@@ -344,6 +318,43 @@
     </div>
 </div>
 
+<!-- Trend charts -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-1">Revenue Trend</h6>
+                <p class="text-muted mb-3" style="font-size:.82rem;">Rent collected per month, last 6 months</p>
+                @{
+                    var maxRevenue = Model.RevenueTrend.Count == 0 ? 0 : Model.RevenueTrend.Max(r => r.Amount);
+                }
+                @if (maxRevenue == 0)
+                {
+                    <p class="text-muted mb-0 py-4 text-center">No payments collected in this period yet.</p>
+                }
+                else
+                {
+                    <div style="height:@(plotHeight + 44)px;">
+                        <canvas id="revenueTrendChart" role="img" aria-label="Revenue collected per month for the last six months"></canvas>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h6 class="section-heading mb-1">Occupancy Trend</h6>
+                <p class="text-muted mb-3" style="font-size:.82rem;">Approximate occupancy rate per month, last 6 months</p>
+                <div style="height:@(plotHeight + 44)px;">
+                    <canvas id="occupancyTrendChart" role="img" aria-label="Occupancy rate per month for the last six months"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Activity (full width) -->
 <div class="card">
     <div class="card-body p-4">
@@ -395,3 +406,111 @@
         }
     </div>
 </div>
+
+@{
+    var maxPaymentForChart = new[] { Model.PaidPayments, Model.PendingPayments, Model.OverduePayments }.Max();
+    var maxMaintenanceForChart = new[] { Model.SubmittedRequests, Model.AssignedRequests, Model.InProgressRequests, Model.CompletedRequests }.Max();
+    var maxRevenueForChart = Model.RevenueTrend.Count == 0 ? 0 : Model.RevenueTrend.Max(r => r.Amount);
+    var revenueLabels = string.Join(",", Model.RevenueTrend.Select(r => $"'{r.Label}'"));
+    var revenueAmounts = string.Join(",", Model.RevenueTrend.Select(r => r.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    var occupancyLabels = string.Join(",", Model.OccupancyTrend.Select(r => $"'{r.Label}'"));
+    var occupancyRates = string.Join(",", Model.OccupancyTrend.Select(r => r.Rate.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        @if (maxPaymentForChart > 0)
+        {
+            <text>
+        new Chart(document.getElementById('paymentStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Pending', 'Overdue'],
+                datasets: [{
+                    data: [@Model.PaidPayments, @Model.PendingPayments, @Model.OverduePayments],
+                    backgroundColor: ['#16a34a', '#d97706', '#dc2626'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+            </text>
+        }
+
+        @if (maxMaintenanceForChart > 0)
+        {
+            <text>
+        new Chart(document.getElementById('maintenanceStatusChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Submitted', 'Assigned', 'In Progress', 'Completed'],
+                datasets: [{
+                    label: 'Requests',
+                    data: [@Model.SubmittedRequests, @Model.AssignedRequests, @Model.InProgressRequests, @Model.CompletedRequests],
+                    backgroundColor: ['#d97706', '#2563eb', '#7c3aed', '#16a34a'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+            </text>
+        }
+
+        @if (maxRevenueForChart > 0)
+        {
+            <text>
+        new Chart(document.getElementById('revenueTrendChart'), {
+            type: 'line',
+            data: {
+                labels: [@Html.Raw(revenueLabels)],
+                datasets: [{
+                    label: 'Revenue (RM)',
+                    data: [@Html.Raw(revenueAmounts)],
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+            </text>
+        }
+
+        new Chart(document.getElementById('occupancyTrendChart'), {
+            type: 'line',
+            data: {
+                labels: [@Html.Raw(occupancyLabels)],
+                datasets: [{
+                    label: 'Occupancy (%)',
+                    data: [@Html.Raw(occupancyRates)],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
+    </script>
+}
