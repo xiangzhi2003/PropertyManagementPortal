@@ -333,7 +333,19 @@ namespace PropertyManagementPortal.Controllers
                 .Include(p => p.Tenancy)
                     .ThenInclude(t => t.Unit)
                         .ThenInclude(u => u.Property)
-                .Where(p => p.Tenancy.TenantId == user.Id && p.DueDate.AddDays(-7) <= today)
+                .Where(p =>
+                    p.Tenancy.TenantId == user.Id &&
+                    (
+                        p.PaymentId == p.Tenancy.Payments
+                            .OrderBy(x => x.DueDate)
+                            .Select(x => x.PaymentId)
+                            .FirstOrDefault()
+
+                        ||
+
+                        p.DueDate.AddDays(-7) <= today
+                    )
+                )
                 .OrderByDescending(p => p.DueDate)
                 .Select(p => new PaymentViewModel
                 {
