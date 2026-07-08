@@ -1,6 +1,63 @@
-﻿@{
+@{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="container py-5" style="max-width:820px;">
+    <h1 class="fw-bold mb-1">Privacy Policy</h1>
+    <p class="text-muted mb-5">Last updated: @DateTime.Now.ToString("MMMM yyyy")</p>
+
+    <div class="mb-4">
+        <h5 class="fw-semibold">Information We Collect</h5>
+        <p class="text-muted">
+            When you register or use PropManage, we collect the information necessary to operate your account
+            and the property management services you use, including:
+        </p>
+        <ul class="text-muted">
+            <li>Account details — full name, email address, and phone number</li>
+            <li>Authentication data — your password (stored securely hashed) or, if you sign in with Google, the
+                basic profile information Google shares with us (name and email)</li>
+            <li>Tenancy records — lease start/end dates, assigned unit and property, and application status</li>
+            <li>Payment records — rent amounts, due dates, and payment status for tracking purposes</li>
+            <li>Maintenance requests — descriptions, categories, and any photos you upload when submitting or
+                resolving a request</li>
+        </ul>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="fw-semibold">How We Use Your Information</h5>
+        <p class="text-muted">
+            Your information is used solely to operate the portal: managing tenancies and applications, tracking
+            rent payments, coordinating maintenance requests between tenants and staff, and sending in-app
+            notifications about activity relevant to your account (e.g. a maintenance update or a role request
+            decision).
+        </p>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="fw-semibold">Who Can Access Your Information</h5>
+        <p class="text-muted">
+            Access is scoped to your role. Tenants can only see their own tenancy, payment, and maintenance data.
+            Property Managers can see data for the properties assigned to them. Maintenance Staff can see the
+            details of jobs assigned to them. Admins have full access to support and oversee the platform, and
+            every admin action (create, edit, delete, approve, reject) is recorded in an Activity Log for
+            accountability.
+        </p>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="fw-semibold">Data Storage</h5>
+        <p class="text-muted">
+            Data is stored in a hosted PostgreSQL database. Uploaded photos (e.g. maintenance evidence) are stored
+            on the application server. We do not sell or share your personal data with third parties outside of
+            what's required to operate the service (e.g. Google, if you choose to sign in with your Google account).
+        </p>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="fw-semibold">Your Choices</h5>
+        <p class="text-muted">
+            You can review and update your name and phone number at any time from <strong>My Profile</strong>. If
+            you'd like your account or data removed, contact your administrator.
+        </p>
+    </div>
+</div>

@@ -67,7 +67,7 @@ public class ForgotPasswordModel : PageModel
             var callbackUrl = Url.Page(
                 "/Account/ResetPassword",
                 pageHandler: null,
-                values: new { area = "Identity", code },
+                values: new { area = "Identity", code, email = Input.Email },
                 protocol: Request.Scheme)!;
 
             await _emailSender.SendEmailAsync(
@@ -75,7 +75,10 @@ public class ForgotPasswordModel : PageModel
                 "Reset Password",
                 $"Please reset your password by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
-            return RedirectToPage("./ForgotPasswordConfirmation");
+            // This app has no real email sender configured, so the email above is a
+            // no-op. Pass the reset link through so the confirmation page can show it
+            // directly — same fallback already used by RegisterConfirmation.
+            return RedirectToPage("./ForgotPasswordConfirmation", new { resetUrl = callbackUrl });
         }
 
         return Page();

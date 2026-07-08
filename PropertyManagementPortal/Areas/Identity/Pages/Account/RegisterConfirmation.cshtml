@@ -4,20 +4,38 @@
     ViewData["Title"] = "Register confirmation";
 }
 
-<h1>@ViewData["Title"]</h1>
-@{
-    if (@Model.DisplayConfirmAccountLink)
-    {
-<p>
-    This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
-    Normally this would be emailed: <a id="confirm-link" href="@Model.EmailConfirmationUrl">Click here to confirm your account</a>
-</p>
-    }
-    else
-    {
-<p>
-        Please check your email to confirm your account.
-</p>
-    }
-}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="#16a34a" viewBox="0 0 16 16">
+                            <path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v.793c.026.009.051.02.076.032L7.674 8.51c.206.1.446.1.652 0l6.598-3.185A.02.02 0 0 0 15 5.293V4.5A1.5 1.5 0 0 0 13.5 3zM15 6.437l-6.324 3.05a1.5 1.5 0 0 1-1.352 0L1 6.437V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="fw-bold mb-0">Confirm Your Account</h3>
+                    <p class="text-muted" style="font-size:.9rem;">One more step to activate your account</p>
+                </div>
 
+                @if (Model.DisplayConfirmAccountLink)
+                {
+                    <a id="confirm-link" href="@Model.EmailConfirmationUrl" class="btn btn-primary w-100 py-2 fw-semibold">
+                        Yes, Confirm My Account
+                    </a>
+                }
+                else
+                {
+                    <p class="text-center text-muted mb-0">
+                        We've sent a confirmation link to your email address. Please check your inbox (and spam folder)
+                        to activate your account before logging in.
+                    </p>
+                }
+
+                <p class="text-center text-muted mt-4 mb-0" style="font-size:.9rem;">
+                    <a asp-page="./Login" class="fw-semibold text-decoration-none">Back to Log in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

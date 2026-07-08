@@ -4,5 +4,19 @@
     ViewData["Title"] = "Confirm email";
 }
 
-<h1>@ViewData["Title"]</h1>
-<partial name="_StatusMessage" model="Model.StatusMessage" />
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="#16a34a" viewBox="0 0 16 16">
+                        <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m3.97-9.03a.75.75 0 0 0-1.08-1.04L6.97 9.91 4.75 7.69a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.08-.02z"/>
+                    </svg>
+                </div>
+                <h3 class="fw-bold mb-1">Success!</h3>
+                <p class="text-muted mb-4">Your account is ready to go.</p>
+                <a asp-page="./Login" class="btn btn-primary w-100 py-2 fw-semibold">Continue to Log in</a>
+            </div>
+        </div>
+    </div>
+</div>
