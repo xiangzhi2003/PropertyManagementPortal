@@ -94,9 +94,14 @@ namespace PropertyManagementPortal.Controllers
                 Status = "Pending",
                 RequestedAt = DateTime.UtcNow
             });
+
+            var roleLabel = role == "PropertyManager" ? "Property Manager" : "Maintenance Staff";
+            foreach (var admin in await _userManager.GetUsersInRoleAsync("Admin"))
+                AddNotification(admin.Id, $"{user.FullName} requested to become a {roleLabel}.");
+
             await _db.SaveChangesAsync();
 
-            TempData["Success"] = $"Your request to become a {(role == "PropertyManager" ? "Property Manager" : "Maintenance Staff")} has been submitted. Please wait for admin approval.";
+            TempData["Success"] = $"Your request to become a {roleLabel} has been submitted. Please wait for admin approval.";
             return RedirectToAction(nameof(Dashboard));
         }
 
@@ -273,6 +278,11 @@ namespace PropertyManagementPortal.Controllers
             };
 
             _db.MaintenanceRequests.Add(request);
+
+            var unit = await _db.Units.Include(u => u.Property).FirstAsync(u => u.UnitId == vm.UnitId);
+            foreach (var admin in await _userManager.GetUsersInRoleAsync("Admin"))
+                AddNotification(admin.Id, $"New maintenance request ({vm.Category}) at {unit.Property.Name}, Unit {unit.UnitNumber}.");
+
             await _db.SaveChangesAsync();
 
             TempData["Success"] = "Maintenance request submitted.";

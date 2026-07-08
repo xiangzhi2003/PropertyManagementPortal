@@ -189,6 +189,7 @@ footer a:hover {
 .admin-main {
     padding: 2.5rem 3rem;
     min-height: 0;
+    min-width: 0;
 }
 
 @media (max-width: 991px) {

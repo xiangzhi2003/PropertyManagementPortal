@@ -229,34 +229,6 @@ namespace PropertyManagementPortal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ToggleUserStatus(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null) return NotFound();
-
-            var roles = await _userManager.GetRolesAsync(user);
-            if (roles.Contains("Admin"))
-            {
-                TempData["Error"] = "Cannot deactivate an Admin account.";
-                return RedirectToAction(nameof(Users));
-            }
-
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (user.Id == currentUser!.Id)
-            {
-                TempData["Error"] = "Cannot deactivate your own account.";
-                return RedirectToAction(nameof(Users));
-            }
-
-            user.IsActive = !user.IsActive;
-            await _userManager.UpdateAsync(user);
-            await LogAsync(user.IsActive ? "Activated User" : "Deactivated User", "User", user.Id, user.Email);
-            TempData["Success"] = $"User {user.FullName} has been {(user.IsActive ? "activated" : "deactivated")}.";
-            return RedirectToAction(nameof(Users));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteUser(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -418,20 +390,6 @@ namespace PropertyManagementPortal.Controllers
 
             if (property == null) return NotFound();
             return View(property);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TogglePropertyStatus(int id)
-        {
-            var property = await _db.Properties.FindAsync(id);
-            if (property == null) return NotFound();
-
-            property.Status = property.Status == "Active" ? "Inactive" : "Active";
-            await _db.SaveChangesAsync();
-            await LogAsync($"Set Property {property.Status}", "Property", id.ToString(), property.Name);
-            TempData["Success"] = $"Property '{property.Name}' is now {property.Status}.";
-            return RedirectToAction(nameof(Properties));
         }
 
         [HttpPost]

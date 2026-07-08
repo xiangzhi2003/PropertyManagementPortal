@@ -75,13 +75,6 @@
                             <div class="d-flex gap-1 justify-content-end">
                                 <a asp-action="ViewProperty" asp-route-id="@p.PropertyId" class="btn btn-sm btn-outline-secondary">View</a>
                                 <a asp-action="EditProperty" asp-route-id="@p.PropertyId" class="btn btn-sm btn-outline-primary">Edit</a>
-                                <form asp-action="TogglePropertyStatus" asp-route-id="@p.PropertyId" method="post" style="display:inline;">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm @(p.Status == "Active" ? "btn-outline-warning" : "btn-outline-success")"
-                                            onclick="return confirm('Toggle status for @p.Name?')">
-                                        @(p.Status == "Active" ? "Deactivate" : "Activate")
-                                    </button>
-                                </form>
                                 <form asp-action="DeleteProperty" asp-route-id="@p.PropertyId" method="post" style="display:inline;">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
