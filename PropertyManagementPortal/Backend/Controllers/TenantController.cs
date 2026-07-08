@@ -173,7 +173,7 @@ namespace PropertyManagementPortal.Controllers
             {
                 UnitId = vm.UnitId,
                 TenantId = user.Id,
-                StartDate = DateTime.UtcNow.Date,
+                StartDate = vm.StartDate.ToUniversalTime(),
                 EndDate = vm.EndDate.ToUniversalTime(),
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow
@@ -351,7 +351,7 @@ namespace PropertyManagementPortal.Controllers
             // displays as overdue. Mirrors ManagerController's derive-on-read logic.
             foreach (var p in payments)
             {
-                if (p.Status == "Pending" && p.DueDate.Date < today)
+                if (p.Status == "Pending" && p.DueDate.Date <= today)
                     p.Status = "Overdue";
             }
 

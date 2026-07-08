@@ -73,11 +73,11 @@ else
 
                         <td>
                             <div>
-                                @item.StartDate.ToString("dd MMM yyyy")
+                                @item.StartDate.ToLocalTime().ToString("dd MMM yyyy")
                             </div>
 
                             <small class="text-muted">
-                                until @item.EndDate.ToString("dd MMM yyyy")
+                                until @item.EndDate.ToLocalTime().ToString("dd MMM yyyy")
                             </small>
                         </td>
 
