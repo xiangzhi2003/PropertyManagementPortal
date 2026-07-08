@@ -3,9 +3,16 @@
 @{
     ViewData["Title"] = "Confirm Application";
 
-    var months =
-        ((Model.EndDate.Year - Model.StartDate.Year) * 12) +
-        Model.EndDate.Month - Model.StartDate.Month + 1;
+    var startDate = Model.StartDate.ToLocalTime();
+    var endDate = Model.EndDate.ToLocalTime();
+    var months = 0;
+    var current = startDate;
+
+    while (current < endDate)
+    {
+        months++;
+        current = current.AddMonths(1);
+    }
 
     var total = months * Model.RentAmount;
 }
@@ -56,7 +63,12 @@
             </tr>
 
             <tr>
-                <th>Estimated Total Rent</th>
+                <th>
+                    Estimated Total Rent
+                    <small class="text-muted">
+                        (Calculated per Month)
+                    </small>
+                </th>
                 <td>
                     <strong>
                         RM @total.ToString("N2")
