@@ -52,6 +52,13 @@
                             @(Model.Status == "Active" ? "Deactivate Property" : "Activate Property")
                         </button>
                     </form>
+                    <form asp-action="DeleteProperty" asp-route-id="@Model.PropertyId" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-lg w-100 btn-outline-danger"
+                                onclick="return confirm('Permanently delete @Model.Name and all its units? This cannot be undone.')">
+                            Delete Property
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

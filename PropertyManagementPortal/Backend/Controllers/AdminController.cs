@@ -10,16 +10,13 @@ using PropertyManagementPortal.ViewModels.Admin;
 namespace PropertyManagementPortal.Controllers
 {
     [Authorize(Roles = "Admin")]
-    public class AdminController : Controller
+    public class AdminController : AppControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
 
         public AdminController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+            : base(db, userManager)
         {
-            _db = db;
-            _userManager = userManager;
             _roleManager = roleManager;
         }
 
@@ -39,13 +36,15 @@ namespace PropertyManagementPortal.Controllers
             await _db.SaveChangesAsync();
         }
 
-        // ── Dashboard ────────────────────────────────────────────────────────────
+        // ── Dashboard (includes what used to be the separate Reports page) ────────
         public async Task<IActionResult> Dashboard()
         {
             var managers = await _userManager.GetUsersInRoleAsync("PropertyManager");
             var tenants = await _userManager.GetUsersInRoleAsync("Tenant");
             var staff = await _userManager.GetUsersInRoleAsync("MaintenanceStaff");
             var admin = await _userManager.GetUserAsync(User);
+
+            var overduePayments = await _db.Payments.CountAsync(p => p.Status == "Overdue");
 
             var vm = new DashboardViewModel
             {
@@ -54,7 +53,23 @@ namespace PropertyManagementPortal.Controllers
                 TotalProperties = await _db.Properties.CountAsync(),
                 PendingMaintenance = await _db.MaintenanceRequests
                     .CountAsync(r => r.Status == "Submitted" || r.Status == "Assigned" || r.Status == "InProgress"),
-                OverduePayments = await _db.Payments.CountAsync(p => p.Status == "Overdue")
+                OverduePayments = overduePayments,
+
+                // Occupancy
+                TotalUnits = await _db.Units.CountAsync(),
+                OccupiedUnits = await _db.Units.CountAsync(u => u.Status == "Occupied"),
+                VacantUnits = await _db.Units.CountAsync(u => u.Status == "Vacant"),
+
+                // Payments
+                TotalPayments = await _db.Payments.CountAsync(),
+                PaidPayments = await _db.Payments.CountAsync(p => p.Status == "Paid"),
+                PendingPayments = await _db.Payments.CountAsync(p => p.Status == "Pending"),
+
+                // Maintenance
+                SubmittedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Submitted"),
+                AssignedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Assigned"),
+                InProgressRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "InProgress"),
+                CompletedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed")
             };
 
             ViewBag.RecentLogs = await _db.ActivityLogs
@@ -64,6 +79,9 @@ namespace PropertyManagementPortal.Controllers
 
             return View(vm);
         }
+
+        // Old bookmarks/links to /Admin/Reports still work — Reports is now part of Dashboard.
+        public IActionResult Reports() => RedirectToAction(nameof(Dashboard));
 
         // ── Users ────────────────────────────────────────────────────────────────
         public async Task<IActionResult> Users(string? search, string? role, string? status)
@@ -253,15 +271,45 @@ namespace PropertyManagementPortal.Controllers
 
             var hasTenancies = await _db.Tenancies.AnyAsync(t => t.TenantId == id);
             var hasRequests = await _db.MaintenanceRequests.AnyAsync(m => m.TenantId == id || m.AssignedStaffId == id);
+            var hasManagedProperties = await _db.Properties.AnyAsync(p => p.ManagerId == id);
+            var hasMaintenanceUpdates = await _db.MaintenanceUpdates.AnyAsync(u => u.StaffId == id);
+
             if (hasTenancies || hasRequests)
             {
                 TempData["Error"] = "Cannot delete user with active tenancies or maintenance requests.";
                 return RedirectToAction(nameof(Users));
             }
 
+            if (hasManagedProperties)
+            {
+                TempData["Error"] = "Cannot delete a user who is assigned as a property manager. Reassign or unassign their properties first.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            if (hasMaintenanceUpdates)
+            {
+                TempData["Error"] = "Cannot delete a user who has a maintenance job history (status updates). Deactivate the account instead.";
+                return RedirectToAction(nameof(Users));
+            }
+
             var name = user.FullName;
             var email = user.Email;
-            await _userManager.DeleteAsync(user);
+
+            try
+            {
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    TempData["Error"] = "Could not delete this user: " + string.Join(" ", result.Errors.Select(e => e.Description));
+                    return RedirectToAction(nameof(Users));
+                }
+            }
+            catch (DbUpdateException)
+            {
+                TempData["Error"] = "Cannot delete this user because other records still reference their account. Deactivate the account instead.";
+                return RedirectToAction(nameof(Users));
+            }
+
             await LogAsync("Deleted User", "User", id, $"{email}");
             TempData["Success"] = $"User {name} has been deleted.";
             return RedirectToAction(nameof(Users));
@@ -386,24 +434,39 @@ namespace PropertyManagementPortal.Controllers
             return RedirectToAction(nameof(Properties));
         }
 
-        // ── Reports ──────────────────────────────────────────────────────────────
-        public async Task<IActionResult> Reports()
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteProperty(int id)
         {
-            var vm = new ReportsViewModel
+            var property = await _db.Properties.Include(p => p.Units).FirstOrDefaultAsync(p => p.PropertyId == id);
+            if (property == null) return NotFound();
+
+            var unitIds = property.Units.Select(u => u.UnitId).ToList();
+            var hasTenancies = await _db.Tenancies.AnyAsync(t => unitIds.Contains(t.UnitId));
+            var hasMaintenanceRequests = await _db.MaintenanceRequests.AnyAsync(m => unitIds.Contains(m.UnitId));
+
+            if (hasTenancies || hasMaintenanceRequests)
             {
-                TotalUnits = await _db.Units.CountAsync(),
-                OccupiedUnits = await _db.Units.CountAsync(u => u.Status == "Occupied"),
-                VacantUnits = await _db.Units.CountAsync(u => u.Status == "Vacant"),
-                TotalPayments = await _db.Payments.CountAsync(),
-                PaidPayments = await _db.Payments.CountAsync(p => p.Status == "Paid"),
-                PendingPayments = await _db.Payments.CountAsync(p => p.Status == "Pending"),
-                OverduePayments = await _db.Payments.CountAsync(p => p.Status == "Overdue"),
-                SubmittedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Submitted"),
-                AssignedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Assigned"),
-                InProgressRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "InProgress"),
-                CompletedRequests = await _db.MaintenanceRequests.CountAsync(m => m.Status == "Completed")
-            };
-            return View(vm);
+                TempData["Error"] = "Cannot delete a property that has tenancies or maintenance requests on its units. Remove those first.";
+                return RedirectToAction(nameof(Properties));
+            }
+
+            var name = property.Name;
+
+            try
+            {
+                _db.Properties.Remove(property); // cascades to its (now childless) units
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                TempData["Error"] = "Cannot delete this property because related records still exist.";
+                return RedirectToAction(nameof(Properties));
+            }
+
+            await LogAsync("Deleted Property", "Property", id.ToString(), name);
+            TempData["Success"] = $"Property '{name}' and its units have been deleted.";
+            return RedirectToAction(nameof(Properties));
         }
 
         // ── Activity Log ─────────────────────────────────────────────────────────
