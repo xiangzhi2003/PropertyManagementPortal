@@ -101,7 +101,6 @@ namespace PropertyManagementPortal.Controllers
 
             await _db.SaveChangesAsync();
 
-            TempData["Success"] = $"Your request to become a {roleLabel} has been submitted. Please wait for admin approval.";
             return RedirectToAction(nameof(Dashboard));
         }
 
@@ -308,12 +307,12 @@ namespace PropertyManagementPortal.Controllers
 
             ViewBag.Units = await _db.Tenancies
                 .Include(t => t.Unit)
-                .ThenInclude(u => u.Property)
-                .Where(t => t.TenantId == user.Id 
-                        && t.Status == "Approved")
+                    .ThenInclude(u => u.Property)
+                .Where(t => t.TenantId == user.Id
+                        && t.Status == "Approved"
+                        && t.Payments.Any(p => p.Status == "Paid"))
                 .Select(t => t.Unit)
                 .ToListAsync();
-
 
             return View(requests);
         }
