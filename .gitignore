@@ -12,6 +12,7 @@ obj/
 # Secrets
 appsettings.Development.json
 **/appsettings.json
+.env
 
 # SQL Dump files
 neon_dump.sql

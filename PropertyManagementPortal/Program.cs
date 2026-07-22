@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
+using Amazon.S3;
+using Amazon.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,34 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// Load .env containing AWS key
+DotNetEnv.Env.Load();
+
+// Build AWS credentials
+var accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+var secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+var region = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
+
+
+// Registers IAmazonS3
+if (!string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey))
+{
+    var credentials = new BasicAWSCredentials(accessKey, secretKey);
+    
+    // 3. Register IAmazonS3 using these specific credentials and region
+    builder.Services.AddSingleton<IAmazonS3>(sp => 
+        new AmazonS3Client(credentials, Amazon.RegionEndpoint.GetBySystemName(region)));
+}
+else
+{
+    // Fallback default registration for environments like production (IAM Roles)
+    builder.Services.AddAWSService<IAmazonS3>();
+}
+
+// Add the service to controllers
+builder.Services.AddScoped<IS3Service, S3Service>(); 
+builder.Services.AddControllersWithViews();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddRoles<IdentityRole>()

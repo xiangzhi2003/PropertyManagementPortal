@@ -12,11 +12,13 @@ namespace PropertyManagementPortal.Controllers
     public class MaintenanceController : AppControllerBase
     {
         private readonly IWebHostEnvironment _env;
+        private readonly IS3Service _s3Service;
 
-        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env)
+        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env, IS3Service s3Service)
             : base(db, userManager)
         {
             _env = env;
+            _s3Service = s3Service;
         }
 
         // ── DASHBOARD ────────────────────────────────────────────────────────
@@ -159,36 +161,62 @@ namespace PropertyManagementPortal.Controllers
             var userId = _userManager.GetUserId(User);
             var user = await _userManager.GetUserAsync(User);
 
-            var vm = await _db.MaintenanceRequests
+            var requestData = await _db.MaintenanceRequests
                 .Where(r => r.RequestId == id && r.AssignedStaffId == userId)   // ownership guard
-                .Select(r => new JobDetailsViewModel
+                .Select(r => new
                 {
-                    RequestId = r.RequestId,
-                    Category = r.Category,
-                    Description = r.Description,
-                    PhotoUrl = r.PhotoUrl,
-                    Status = r.Status,
-                    Priority = r.Priority,
-                    AssignmentNotes = r.AssignmentNotes,
-                    CreatedAt = r.CreatedAt,
+                    r.RequestId,
+                    r.Category,
+                    r.Description,
+                    r.PhotoUrl,
+                    r.Status,
+                    r.Priority,
+                    r.AssignmentNotes,
+                    r.CreatedAt,
                     TenantName = r.Tenant.FullName,
                     TenantPhone = r.Tenant.PhoneNumber,
                     PropertyName = r.Unit.Property.Name,
-                    UnitNumber = r.Unit.UnitNumber,
+                    r.Unit.UnitNumber,
                     Updates = r.Updates
                         .OrderByDescending(u => u.UpdatedAt)
-                        .Select(u => new UpdateRowViewModel
+                        .Select(u => new
                         {
-                            StatusUpdate = u.StatusUpdate,
-                            Notes = u.Notes,
-                            EvidencePhotoUrl = u.EvidencePhotoUrl,
+                            u.StatusUpdate,
+                            u.Notes,
+                            u.EvidencePhotoUrl,
                             StaffName = u.Staff.FullName,
-                            UpdatedAt = u.UpdatedAt
+                            u.UpdatedAt
                         }).ToList()
                 })
                 .FirstOrDefaultAsync();
 
-            if (vm == null) return NotFound();
+            if (requestData == null) return NotFound();
+
+            var vm = new JobDetailsViewModel
+            {
+                RequestId = requestData.RequestId,
+                Category = requestData.Category,
+                Description = requestData.Description,
+                PhotoUrl = requestData.PhotoUrl, // Change to _s3Service.GetPresignedUrl(requestData.PhotoUrl) for S3
+                Status = requestData.Status,
+                Priority = requestData.Priority,
+                AssignmentNotes = requestData.AssignmentNotes,
+                CreatedAt = requestData.CreatedAt,
+                TenantName = requestData.TenantName,
+                TenantPhone = requestData.TenantPhone,
+                PropertyName = requestData.PropertyName,
+                UnitNumber = requestData.UnitNumber,
+                Updates = requestData.Updates.Select(u => new UpdateRowViewModel
+                {
+                    StatusUpdate = u.StatusUpdate,
+                    Notes = u.Notes,
+                    EvidencePhotoUrl = u.EvidencePhotoUrl != null 
+                                    ? _s3Service.GetPresignedUrl(u.EvidencePhotoUrl) 
+                                    : null, 
+                    StaffName = u.StaffName,
+                    UpdatedAt = u.UpdatedAt
+                }).ToList()
+            };
 
             return View(vm);
         }
@@ -319,6 +347,9 @@ namespace PropertyManagementPortal.Controllers
         // Isolated here so swapping to S3 later is a one-method change.
         private async Task<string> SaveEvidencePhotoAsync(IFormFile photo)
         {
+            string fileName = await _s3Service.UploadFileAsync(photo);
+            
+            /*
             var uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
             Directory.CreateDirectory(uploadsDir);
 
@@ -329,8 +360,9 @@ namespace PropertyManagementPortal.Controllers
             {
                 await photo.CopyToAsync(stream);
             }
+            */
 
-            return $"/uploads/{fileName}";
+            return $"{fileName}";
         }
     }
 }
