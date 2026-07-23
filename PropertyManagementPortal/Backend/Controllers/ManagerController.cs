@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
 using PropertyManagementPortal.ViewModels.Manager;
-using PropertyManagementPortal.ViewModels.Shared;
  
 namespace PropertyManagementPortal.Controllers
 {
@@ -47,6 +46,30 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
         }
  
+        // AWS runs the server in UTC but the business operates in UTC+8. Every
+        // "is it overdue / is this date in the future" comparison must use
+        // Malaysian local time, otherwise the answers are wrong between midnight
+        // and 8am local, when UTC is still on the previous calendar day.
+        private static readonly TimeZoneInfo MalaysiaTimeZone = ResolveMalaysiaTimeZone();
+ 
+        private static TimeZoneInfo ResolveMalaysiaTimeZone()
+        {
+            try
+            {
+                // Linux / AWS Elastic Beanstalk
+                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Kuala_Lumpur");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Windows dev machines use the legacy id
+                return TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
+            }
+        }
+ 
+        // Today's date in Malaysian local time.
+        private static DateTime TodayLocal() =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, MalaysiaTimeZone).Date;
+ 
         // Clamp a requested page to the valid range for a given item count.
         private static int NormalizePage(int page, int totalItems)
         {
@@ -73,7 +96,7 @@ namespace PropertyManagementPortal.Controllers
  
             // Overdue is derived, not stored: a Pending payment past its due date counts
             // as overdue. Mirrors the same derive-on-read logic used on the Payments page.
-            var todayForPayments = DateTime.UtcNow.Date;
+            var todayForPayments = TodayLocal();
             var pendingDueDates = await _db.Payments
                 .Where(p => unitIds.Contains(p.Tenancy.UnitId) && p.Status == "Pending")
                 .Select(p => p.DueDate)
@@ -473,7 +496,7 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
  
             // Derive-on-read: an unpaid payment past its due date shows as Overdue.
-            var today = DateTime.UtcNow.Date;
+            var today = TodayLocal();
             foreach (var r in allRows)
             {
                 if (r.Status == "Pending" && r.DueDate.Date < today)
@@ -511,6 +534,7 @@ namespace PropertyManagementPortal.Controllers
                 PaidCount = paidCount,
                 OutstandingAmount = outstandingAmount,
                 PaidAmount = paidAmount,
+                Today = today,
                 CurrentPage = page,
                 PageSize = PageSize,
                 TotalItems = allRows.Count
@@ -541,7 +565,7 @@ namespace PropertyManagementPortal.Controllers
             }
  
             // Guard: don't allow a future payment date.
-            var today = DateTime.UtcNow.Date;
+            var today = TodayLocal();
             if (paymentDate.Date > today)
             {
                 TempData["Error"] = "Payment date cannot be in the future.";

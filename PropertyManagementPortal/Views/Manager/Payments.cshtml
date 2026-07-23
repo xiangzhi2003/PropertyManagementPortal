@@ -151,8 +151,8 @@
                                                         </p>
                                                         <label class="form-label">Payment date</label>
                                                         <input type="date" name="paymentDate" class="form-control"
-                                                            value="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
-                                                            max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required />
+                                                            value="@Model.Today.ToString("yyyy-MM-dd")"
+                                                            max="@Model.Today.ToString("yyyy-MM-dd")" required />
                                                         <span class="text-muted" style="font-size:.8rem;">Defaults to today. Change it if the tenant paid on a different day.</span>
                                                     </div>
                                                     <div class="modal-footer">

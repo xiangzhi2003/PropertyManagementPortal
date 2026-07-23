@@ -19,6 +19,10 @@ namespace PropertyManagementPortal.ViewModels.Manager
         public int PaidCount { get; set; }
         public decimal OutstandingAmount { get; set; }
         public decimal PaidAmount { get; set; }
+ 
+        // Today in Malaysian local time, supplied by the controller so the
+        // date picker cannot offer a date the MarkPaid guard would reject.
+        public DateTime Today { get; set; }
     }
  
     public class PaymentRowViewModel
