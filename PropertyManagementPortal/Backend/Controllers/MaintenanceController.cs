@@ -197,7 +197,9 @@ namespace PropertyManagementPortal.Controllers
                 RequestId = requestData.RequestId,
                 Category = requestData.Category,
                 Description = requestData.Description,
-                PhotoUrl = requestData.PhotoUrl, // Change to _s3Service.GetPresignedUrl(requestData.PhotoUrl) for S3
+                PhotoUrl = requestData.PhotoUrl != null
+                            ? _s3Service.GetPresignedUrl(requestData.PhotoUrl)
+                            : null,
                 Status = requestData.Status,
                 Priority = requestData.Priority,
                 AssignmentNotes = requestData.AssignmentNotes,
