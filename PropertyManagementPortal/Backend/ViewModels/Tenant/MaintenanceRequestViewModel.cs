@@ -15,6 +15,8 @@ namespace PropertyManagementPortal.ViewModels.Tenant
 
         public string Status { get; set; } = string.Empty;
 
+        public IFormFile? Photo { get; set; }
+
         public List<SelectListItem> Units { get; set; } = new();
     }
 }

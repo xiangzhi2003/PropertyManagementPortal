@@ -15,11 +15,13 @@ namespace PropertyManagementPortal.Controllers
     public class TenantController : AppControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly IS3Service _s3Service;
 
-        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration configuration)
+        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IS3Service s3Service, IConfiguration configuration)
         : base(db, userManager)
         {
             _configuration = configuration;
+            _s3Service = s3Service;
         }
 
         public async Task<IActionResult> Dashboard()
@@ -243,6 +245,12 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> Maintenance(MaintenanceRequestViewModel vm)
         {
             var user = await _userManager.GetUserAsync(User);
+            string? photoFileName = null;
+
+            if (vm.Photo != null)
+            {
+                photoFileName = await _s3Service.UploadFileAsync(vm.Photo);
+            }
 
             if (user == null)
             {
@@ -272,6 +280,7 @@ namespace PropertyManagementPortal.Controllers
                 UnitId = vm.UnitId,
                 Category = vm.Category,
                 Description = vm.Description,
+                PhotoUrl = photoFileName,
                 Status = "Submitted",
                 CreatedAt = DateTime.UtcNow
             };
@@ -303,6 +312,14 @@ namespace PropertyManagementPortal.Controllers
                 .Where(m => m.TenantId == user.Id)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+
+            foreach (var r in requests)
+            {
+                if (!string.IsNullOrEmpty(r.PhotoUrl))
+                {
+                    r.PhotoUrl = _s3Service.GetPresignedUrl(r.PhotoUrl);
+                }
+            }
 
 
             ViewBag.Units = await _db.Tenancies

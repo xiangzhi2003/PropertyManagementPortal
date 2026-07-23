@@ -37,6 +37,7 @@ else
                         <th>Description</th>
                         <th>Status</th>
                         <th>Date</th>
+                        <th>Photo</th>
                     </tr>
                 </thead>
 
@@ -57,6 +58,19 @@ else
 
                         <td>
                             @r.Description
+                        </td>
+
+                        <td>
+                            @if (!string.IsNullOrEmpty(r.PhotoUrl))
+                            {
+                                <a href="@r.PhotoUrl" target="_blank">
+                                    View Photo
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No Photo</span>
+                            }
                         </td>
 
                         <td>
@@ -110,7 +124,7 @@ else
         <div class="modal-content">
 
 
-            <form asp-action="Maintenance" method="post">
+            <form asp-action="Maintenance" method="post" enctype="multipart/form-data">
 
                 @Html.AntiForgeryToken()
 
@@ -197,6 +211,14 @@ else
                               class="form-control"
                               rows="4"
                               required></textarea>
+                    <label class="form-label mt-3">
+                        Photo (Optional)
+                    </label>
+
+                    <input type="file"
+                        name="Photo"
+                        class="form-control"
+                        accept="image/*" />
 
 
                 </div>
