@@ -46,30 +46,6 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
         }
  
-        // AWS runs the server in UTC but the business operates in UTC+8. Every
-        // "is it overdue / is this date in the future" comparison must use
-        // Malaysian local time, otherwise the answers are wrong between midnight
-        // and 8am local, when UTC is still on the previous calendar day.
-        private static readonly TimeZoneInfo MalaysiaTimeZone = ResolveMalaysiaTimeZone();
- 
-        private static TimeZoneInfo ResolveMalaysiaTimeZone()
-        {
-            try
-            {
-                // Linux / AWS Elastic Beanstalk
-                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Kuala_Lumpur");
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                // Windows dev machines use the legacy id
-                return TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
-            }
-        }
- 
-        // Today's date in Malaysian local time.
-        private static DateTime TodayLocal() =>
-            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, MalaysiaTimeZone).Date;
- 
         // Clamp a requested page to the valid range for a given item count.
         private static int NormalizePage(int page, int totalItems)
         {

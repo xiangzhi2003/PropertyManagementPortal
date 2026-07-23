@@ -21,6 +21,29 @@ namespace PropertyManagementPortal.Controllers
             _userManager = userManager;
         }
 
+        // AWS runs the server in UTC but the business operates in UTC+8. Any
+        // "is this date today / in the past / in the future" comparison must use
+        // Malaysian local time, otherwise the answer is wrong between midnight
+        private static readonly TimeZoneInfo MalaysiaTimeZone = ResolveMalaysiaTimeZone();
+
+        private static TimeZoneInfo ResolveMalaysiaTimeZone()
+        {
+            try
+            {
+                // Linux / AWS Elastic Beanstalk
+                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Kuala_Lumpur");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Windows dev machines use the legacy id (same offset, no DST)
+                return TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
+            }
+        }
+
+        // Today's date in Malaysian local time. Available to every role controller.
+        protected static DateTime TodayLocal() =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, MalaysiaTimeZone).Date;
+
         // Queues a notification for a user. Does NOT save — the caller commits it
         // inside its own SaveChangesAsync so it shares that action's transaction.
         // (protected, so it is never routable as an action.)
