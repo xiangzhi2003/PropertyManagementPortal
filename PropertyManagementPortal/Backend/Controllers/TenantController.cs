@@ -379,7 +379,7 @@ namespace PropertyManagementPortal.Controllers
             // displays as overdue. Mirrors ManagerController's derive-on-read logic.
             foreach (var p in payments)
             {
-                if (p.Status == "Pending" && p.DueDate.Date <= today)
+                if (p.Status == "Pending" && p.DueDate.Date < today)
                     p.Status = "Overdue";
             }
 
