@@ -35,5 +35,9 @@ namespace PropertyManagementPortal.ViewModels.Manager
         public string? AssignedStaffName { get; set; }
         public string? Priority { get; set; }
         public string? AssignmentNotes { get; set; }
+ 
+        // Stored as the S3 object key; the controller swaps it for a short-lived
+        // presigned URL before the view renders it.
+        public string? PhotoUrl { get; set; }
     }
 }

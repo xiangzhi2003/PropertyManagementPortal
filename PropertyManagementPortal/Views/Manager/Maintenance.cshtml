@@ -78,7 +78,16 @@
                                 "Assigned" => ("#dbeafe", "#2563eb"),
                                 _ => ("#fef3c7", "#d97706")
                             };
-                            <tr>
+
+                            // Hoisted to row scope so both the priority cell and the
+                            // detail modal below can use them.
+                            var (pbg, pfg) = r.Priority switch
+                            {
+                                "High" => ("#fee2e2", "#dc2626"),
+                                "Medium" => ("#fef3c7", "#d97706"),
+                                _ => ("#f3f4f6", "#6b7280")
+                            };
+                            <tr style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#detailModal-@r.RequestId">
                                 <td class="ps-3" style="max-width:280px;">
                                     <div class="fw-semibold">@r.Category</div>
                                     <div class="text-muted" style="font-size:.8rem;">@r.Description</div>
@@ -91,12 +100,6 @@
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(r.Priority))
                                     {
-                                        var (pbg, pfg) = r.Priority switch
-                                        {
-                                            "High" => ("#fee2e2", "#dc2626"),
-                                            "Medium" => ("#fef3c7", "#d97706"),
-                                            _ => ("#f3f4f6", "#6b7280")
-                                        };
                                         <span class="badge" style="background:@pbg;color:@pfg;">@r.Priority</span>
                                     }
                                     else
@@ -106,7 +109,7 @@
                                 </td>
                                 <td><span class="badge" style="background:@sbg;color:@sfg;">@r.Status</span></td>
                                 <td class="small">@(string.IsNullOrWhiteSpace(r.AssignedStaffName) ? "—" : r.AssignedStaffName)</td>
-                                <td class="text-end pe-3">
+                                <td class="text-end pe-3" onclick="event.stopPropagation();">
                                     @if (r.Status != "Completed" && Model.StaffOptions.Any())
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-primary"
@@ -163,6 +166,71 @@
                                     {
                                         <span class="text-muted small">&mdash;</span>
                                     }
+
+                                    <!-- Detail modal -->
+                                    <div class="modal fade text-start" id="detailModal-@r.RequestId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <div>
+                                                        <h5 class="modal-title mb-0">@r.Category &mdash; Unit @r.UnitNumber</h5>
+                                                        <span class="text-muted" style="font-size:.82rem;">@r.PropertyName</span>
+                                                    </div>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="row g-3 mb-3">
+                                                        <div class="col-sm-6">
+                                                            <div class="text-muted" style="font-size:.75rem;">REPORTED BY</div>
+                                                            <div class="fw-semibold">@r.TenantName</div>
+                                                            <div class="text-muted" style="font-size:.8rem;">@r.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <div class="text-muted mb-1" style="font-size:.75rem;">STATUS</div>
+                                                            <span class="badge" style="background:@sbg;color:@sfg;">@r.Status</span>
+                                                            @if (!string.IsNullOrWhiteSpace(r.Priority))
+                                                            {
+                                                                <span class="badge ms-1" style="background:@pbg;color:@pfg;">@r.Priority priority</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <div class="text-muted" style="font-size:.75rem;">DESCRIPTION</div>
+                                                        <div>@r.Description</div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <div class="text-muted" style="font-size:.75rem;">ASSIGNED TO</div>
+                                                        <div>@(string.IsNullOrWhiteSpace(r.AssignedStaffName) ? "Not yet assigned" : r.AssignedStaffName)</div>
+                                                        @if (!string.IsNullOrWhiteSpace(r.AssignmentNotes))
+                                                        {
+                                                            <div class="text-muted mt-1" style="font-size:.85rem;">Note: @r.AssignmentNotes</div>
+                                                        }
+                                                    </div>
+
+                                                    <div>
+                                                        <div class="text-muted mb-2" style="font-size:.75rem;">PHOTO FROM TENANT</div>
+                                                        @if (!string.IsNullOrWhiteSpace(r.PhotoUrl))
+                                                        {
+                                                            <a href="@r.PhotoUrl" target="_blank" rel="noopener">
+                                                                <img src="@r.PhotoUrl" alt="Issue reported at Unit @r.UnitNumber"
+                                                                     class="img-fluid rounded border" style="max-height:340px;" />
+                                                            </a>
+                                                            <div class="text-muted mt-1" style="font-size:.75rem;">Click the image to open it full size.</div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="text-muted">No photo was attached to this request.</div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         }

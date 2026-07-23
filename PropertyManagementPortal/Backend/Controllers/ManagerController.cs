@@ -14,8 +14,14 @@ namespace PropertyManagementPortal.Controllers
     {
         private const int PageSize = 10;
  
-        public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
-            : base(db, userManager) { }
+        // Needed to presign the tenant's maintenance photo for the detail modal.
+        private readonly IS3Service _s3Service;
+ 
+        public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IS3Service s3Service)
+            : base(db, userManager)
+        {
+            _s3Service = s3Service;
+        }
  
         // ── SCOPING HELPERS ──────────────────────────────────────────────────
         // Every Manager action is limited to the properties assigned to the
@@ -585,7 +591,8 @@ namespace PropertyManagementPortal.Controllers
                     CreatedAt = m.CreatedAt,
                     AssignedStaffName = m.AssignedStaff != null ? m.AssignedStaff.FullName : null,
                     Priority = m.Priority,
-                    AssignmentNotes = m.AssignmentNotes
+                    AssignmentNotes = m.AssignmentNotes,
+                    PhotoUrl = m.PhotoUrl
                 })
                 .ToListAsync();
  
@@ -611,6 +618,14 @@ namespace PropertyManagementPortal.Controllers
  
             page = NormalizePage(page, allRows.Count);
             var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+ 
+            // Presign only the rows actually rendered — the stored value is an S3
+            // object key, which the browser cannot fetch directly.
+            foreach (var r in pageRows)
+            {
+                if (!string.IsNullOrEmpty(r.PhotoUrl))
+                    r.PhotoUrl = _s3Service.GetPresignedUrl(r.PhotoUrl);
+            }
  
             var vm = new MaintenanceListViewModel
             {
