@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
  
+using PropertyManagementPortal.ViewModels.Shared;
+ 
 namespace PropertyManagementPortal.ViewModels.Manager
 {
     public class MaintenanceListViewModel : PaginatedViewModel

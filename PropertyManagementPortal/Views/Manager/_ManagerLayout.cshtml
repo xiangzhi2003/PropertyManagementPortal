@@ -19,6 +19,9 @@
 
     var unassignedMaintenance = _db.MaintenanceRequests
         .Count(m => managedPropertyIds.Contains(m.Unit.PropertyId) && m.AssignedStaffId == null);
+
+    var unreadNotifications = _db.Notifications
+        .Count(n => n.UserId == managerId && !n.IsRead);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -54,7 +57,20 @@
                         <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                     </li>
                 </ul>
-                <partial name="_LoginPartial" />
+                <div class="d-flex align-items-center gap-3">
+                    <a class="nav-link position-relative d-flex align-items-center"
+                       asp-controller="Manager" asp-action="Notifications" title="Notifications">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901"/>
+                        </svg>
+                        @if (unreadNotifications > 0)
+                        {
+                            <span class="position-absolute badge rounded-pill bg-danger"
+                                  style="top:2px;left:60%;font-size:.6rem;">@unreadNotifications</span>
+                        }
+                    </a>
+                    <partial name="_LoginPartial" />
+                </div>
             </div>
         </div>
     </nav>

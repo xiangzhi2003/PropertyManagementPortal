@@ -6,21 +6,17 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
 using PropertyManagementPortal.ViewModels.Manager;
+using PropertyManagementPortal.ViewModels.Shared;
  
 namespace PropertyManagementPortal.Controllers
 {
     [Authorize(Roles = "PropertyManager")]
-    public class ManagerController : Controller
+    public class ManagerController : AppControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<ApplicationUser> _userManager;
         private const int PageSize = 10;
  
         public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
-        {
-            _db = db;
-            _userManager = userManager;
-        }
+            : base(db, userManager) { }
  
         // ── SCOPING HELPERS ──────────────────────────────────────────────────
         // Every Manager action is limited to the properties assigned to the
@@ -34,13 +30,20 @@ namespace PropertyManagementPortal.Controllers
                 .ToListAsync();
         }
  
-        private async Task<List<SelectListItem>> GetPropertyOptionsAsync()
+        // selectedId marks the active filter so the dropdown keeps its selection
+        // after a filter round-trip (asp-items honours SelectListItem.Selected).
+        private async Task<List<SelectListItem>> GetPropertyOptionsAsync(int? selectedId = null)
         {
             var userId = _userManager.GetUserId(User);
             return await _db.Properties
                 .Where(p => p.ManagerId == userId)
                 .OrderBy(p => p.Name)
-                .Select(p => new SelectListItem { Value = p.PropertyId.ToString(), Text = p.Name })
+                .Select(p => new SelectListItem
+                {
+                    Value = p.PropertyId.ToString(),
+                    Text = p.Name,
+                    Selected = selectedId.HasValue && p.PropertyId == selectedId.Value
+                })
                 .ToListAsync();
         }
  
@@ -137,7 +140,7 @@ namespace PropertyManagementPortal.Controllers
                 PropertyFilter = propertyId,
                 StatusFilter = status,
                 SearchTerm = search,
-                PropertyOptions = await GetPropertyOptionsAsync(),
+                PropertyOptions = await GetPropertyOptionsAsync(propertyId),
                 CurrentPage = page,
                 PageSize = PageSize,
                 TotalItems = allRows.Count
@@ -161,7 +164,27 @@ namespace PropertyManagementPortal.Controllers
  
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Please check the unit details and try again.";
+                // Surface the real field errors — the Add modal posts from the list
+                // page, so there is no validation summary on screen to render into.
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(m => !string.IsNullOrWhiteSpace(m))
+                    .ToList();
+ 
+                TempData["Error"] = errors.Count > 0
+                    ? string.Join(" ", errors)
+                    : "Please check the unit details and try again.";
+                return RedirectToAction(nameof(Units));
+            }
+ 
+            // Reject a unit number that already exists inside the same property.
+            var duplicate = await _db.Units.AnyAsync(u =>
+                u.PropertyId == vm.PropertyId && u.UnitNumber == vm.UnitNumber);
+ 
+            if (duplicate)
+            {
+                TempData["Error"] = $"Unit {vm.UnitNumber} already exists in that property.";
                 return RedirectToAction(nameof(Units));
             }
  
@@ -258,7 +281,6 @@ namespace PropertyManagementPortal.Controllers
                 query = query.Where(t => t.Status == status);
  
             var allRows = await query
-                .OrderByDescending(t => t.CreatedAt)
                 .Select(t => new ApplicationRowViewModel
                 {
                     TenancyId = t.TenancyId,
@@ -351,9 +373,14 @@ namespace PropertyManagementPortal.Controllers
                 // is due on the start date's day-of-month.
                 firstDue = startDate.AddDays(7);
 
-                var monthIndex = 0;
-                for (var monthDate = startDate; monthDate <= tenancy.EndDate.Date; monthDate = monthDate.AddMonths(1))
+                // Each due date is derived from startDate rather than from the previous
+                // iteration — otherwise a 31st-of-month start drifts to the 28th in
+                // February and never recovers.
+                for (var monthIndex = 0; ; monthIndex++)
                 {
+                    var monthDate = startDate.AddMonths(monthIndex);
+                    if (monthDate > tenancy.EndDate.Date) break;
+
                     var due = monthIndex == 0 ? firstDue : monthDate;
 
                     _db.Payments.Add(new Payment
@@ -365,20 +392,14 @@ namespace PropertyManagementPortal.Controllers
                         Status = "Pending"
                     });
                     scheduled++;
-                    monthIndex++;
                 }
             }
  
-            // Notify the tenant in-app.
-            _db.Notifications.Add(new Notification
-            {
-                UserId = tenancy.TenantId,
-                Message = scheduled > 0
-                    ? $"Your application for Unit {tenancy.Unit.UnitNumber} was approved. {scheduled} monthly rent payment(s) of RM {rent:N2} scheduled, starting {firstDue:dd MMM yyyy}."
-                    : $"Your application for Unit {tenancy.Unit.UnitNumber} was approved.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            // Notify the tenant in-app. Queued here, committed by the SaveChangesAsync
+            // below so it shares this action's transaction.
+            AddNotification(tenancy.TenantId, scheduled > 0
+                ? $"Your application for Unit {tenancy.Unit.UnitNumber} was approved. {scheduled} monthly rent payment(s) of RM {rent:N2} scheduled, starting {firstDue:dd MMM yyyy}."
+                : $"Your application for Unit {tenancy.Unit.UnitNumber} was approved.");
  
             await _db.SaveChangesAsync();
  
@@ -394,6 +415,7 @@ namespace PropertyManagementPortal.Controllers
             var propertyIds = await GetManagedPropertyIdsAsync();
  
             var tenancy = await _db.Tenancies
+                .Include(t => t.Unit)
                 .FirstOrDefaultAsync(t => t.TenancyId == id && propertyIds.Contains(t.Unit.PropertyId));
  
             if (tenancy == null)
@@ -410,6 +432,11 @@ namespace PropertyManagementPortal.Controllers
  
             tenancy.Status = "Rejected";
             tenancy.Notes = string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason.Trim();
+ 
+            // Mirror the approve path — the tenant hears back either way.
+            AddNotification(tenancy.TenantId,
+                $"Your application for Unit {tenancy.Unit.UnitNumber} was not approved. Reason: {tenancy.Notes}");
+ 
             await _db.SaveChangesAsync();
  
             TempData["Success"] = "Application rejected.";
@@ -424,7 +451,7 @@ namespace PropertyManagementPortal.Controllers
  
             // Property filter is applied in SQL; the status filter is applied in memory
             // below so it can use the DERIVED overdue state, not just the stored status.
-             var baseQuery = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
+            var baseQuery = _db.Payments.Where(p => propertyIds.Contains(p.Tenancy.Unit.PropertyId));
  
             if (propertyId.HasValue)
                 baseQuery = baseQuery.Where(p => p.Tenancy.Unit.PropertyId == propertyId.Value);
@@ -478,7 +505,7 @@ namespace PropertyManagementPortal.Controllers
                 Payments = pageRows,
                 StatusFilter = status,
                 PropertyFilter = propertyId,
-                PropertyOptions = await GetPropertyOptionsAsync(),
+                PropertyOptions = await GetPropertyOptionsAsync(propertyId),
                 PendingCount = pendingCount,
                 OverdueCount = overdueCount,
                 PaidCount = paidCount,
@@ -590,7 +617,7 @@ namespace PropertyManagementPortal.Controllers
                 Requests = pageRows,
                 StatusFilter = status,
                 PropertyFilter = propertyId,
-                PropertyOptions = await GetPropertyOptionsAsync(),
+                PropertyOptions = await GetPropertyOptionsAsync(propertyId),
                 StaffOptions = staffOptions,
                 UnassignedCount = unassignedCount,
                 CurrentPage = page,
@@ -642,13 +669,8 @@ namespace PropertyManagementPortal.Controllers
             request.Priority = priority;
             request.AssignmentNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             // Notify the assigned maintenance staff.
-            _db.Notifications.Add(new Notification
-            {
-                UserId = staff.Id,
-                Message = $"You have been assigned a {priority} priority {request.Category} request at Unit {request.Unit.UnitNumber}.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            AddNotification(staff.Id,
+                $"You have been assigned a {priority} priority {request.Category} request at Unit {request.Unit.UnitNumber}.");
             await _db.SaveChangesAsync();
  
             TempData["Success"] = $"Request assigned to {staff.FullName} ({priority} priority).";

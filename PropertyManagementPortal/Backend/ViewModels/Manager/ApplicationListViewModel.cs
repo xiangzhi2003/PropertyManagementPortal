@@ -1,3 +1,5 @@
+using PropertyManagementPortal.ViewModels.Shared;
+ 
 namespace PropertyManagementPortal.ViewModels.Manager
 {
     public class ApplicationListViewModel : PaginatedViewModel

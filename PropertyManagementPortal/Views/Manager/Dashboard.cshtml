@@ -125,8 +125,11 @@
                     <span class="small fw-semibold">@Model.OccupancyRate%</span>
                 </div>
                 <div class="progress" style="height:16px;border-radius:8px;">
-                    <div class="progress-bar bg-success" style="width:@Model.OccupancyRate%;border-radius:8px;"
-                         role="progressbar" aria-valuenow="@Model.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="progress-bar bg-success"
+                         style="width:@Model.OccupancyRate.ToString(System.Globalization.CultureInfo.InvariantCulture)%;border-radius:8px;"
+                         role="progressbar"
+                         aria-valuenow="@Model.OccupancyRate.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                         aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
             </div>
         </div>
