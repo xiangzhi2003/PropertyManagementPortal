@@ -122,7 +122,7 @@ namespace PropertyManagementPortal.Controllers
                 .FirstOrDefaultAsync(u => u.UnitId == unitId);
 
             if (unit == null)
-                return Challenge();
+                return NotFound();
 
             var vm = new ApplyUnitViewModel
             {
@@ -180,6 +180,14 @@ namespace PropertyManagementPortal.Controllers
             };
 
             _db.Tenancies.Add(tenancy);
+
+            var appliedUnit = await _db.Units
+                .Include(u => u.Property)
+                .FirstAsync(u => u.UnitId == vm.UnitId);
+
+            if (!string.IsNullOrEmpty(appliedUnit.Property.ManagerId))
+                AddNotification(appliedUnit.Property.ManagerId,
+                    $"{user.FullName} applied for Unit {appliedUnit.UnitNumber} at {appliedUnit.Property.Name}.");
 
             await _db.SaveChangesAsync();
 
@@ -292,6 +300,10 @@ namespace PropertyManagementPortal.Controllers
             foreach (var admin in await _userManager.GetUsersInRoleAsync("Admin"))
                 AddNotification(admin.Id, $"New maintenance request ({vm.Category}) at {unit.Property.Name}, Unit {unit.UnitNumber}.");
 
+            if (!string.IsNullOrEmpty(unit.Property.ManagerId))
+                AddNotification(unit.Property.ManagerId,
+                    $"New maintenance request ({vm.Category}) at {unit.Property.Name}, Unit {unit.UnitNumber}.");
+
             await _db.SaveChangesAsync();
 
             TempData["Success"] = "Maintenance request submitted.";
@@ -387,8 +399,16 @@ namespace PropertyManagementPortal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Checkout(int paymentId)
         {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var payment = await _db.Payments
-                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId
+                                       && p.Tenancy.TenantId == user.Id);
 
             if (payment == null)
                 return NotFound();
@@ -433,7 +453,8 @@ namespace PropertyManagementPortal.Controllers
                         "PaymentSuccess",
                         "Tenant",
                         new { paymentId = payment.PaymentId },
-                        Request.Scheme),
+                        Request.Scheme)
+                    + "&session_id={CHECKOUT_SESSION_ID}",
 
                 CancelUrl =
                     Url.Action(
@@ -451,13 +472,51 @@ namespace PropertyManagementPortal.Controllers
             return Redirect(session.Url);
         }
 
-        public async Task<IActionResult> PaymentSuccess(int paymentId)
+        public async Task<IActionResult> PaymentSuccess(
+            int paymentId,
+            [FromQuery(Name = "session_id")] string? sessionId)
         {
+            var userId = _userManager.GetUserId(User);
+
+            // Ownership guard: without this, any tenant could mark ANY payment in the
+            // system as paid just by editing the paymentId in the address bar.
             var payment = await _db.Payments
-                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId
+                                       && p.Tenancy.TenantId == userId);
 
             if (payment == null)
                 return NotFound();
+
+            // Idempotent: returning to this URL a second time must not re-process.
+            if (payment.Status == "Paid")
+                return RedirectToAction(nameof(MyPayments));
+
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                TempData["Error"] = "Payment could not be verified.";
+                return RedirectToAction(nameof(MyPayments));
+            }
+
+            // Ask Stripe whether money actually changed hands. Trusting the redirect
+            // alone would let anyone mark a payment paid by visiting this URL directly.
+            StripeConfiguration.ApiKey = _configuration["Stripe:SecretKey"];
+
+            Session session;
+            try
+            {
+                session = await new SessionService().GetAsync(sessionId);
+            }
+            catch (StripeException)
+            {
+                TempData["Error"] = "Payment could not be verified with Stripe.";
+                return RedirectToAction(nameof(MyPayments));
+            }
+
+            if (session == null || session.PaymentStatus != "paid")
+            {
+                TempData["Error"] = "Payment was not completed.";
+                return RedirectToAction(nameof(MyPayments));
+            }
 
             payment.Status = "Paid";
 

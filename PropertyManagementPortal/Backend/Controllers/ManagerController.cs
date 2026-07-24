@@ -385,7 +385,7 @@ namespace PropertyManagementPortal.Controllers
                 for (var monthIndex = 0; ; monthIndex++)
                 {
                     var monthDate = startDate.AddMonths(monthIndex);
-                    if (monthDate > tenancy.EndDate.Date) break;
+                    if (monthDate >= tenancy.EndDate.Date) break;
 
                     var due = monthIndex == 0 ? firstDue : monthDate;
 

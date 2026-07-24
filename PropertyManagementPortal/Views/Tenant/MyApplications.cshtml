@@ -44,9 +44,21 @@ else
 
                 @foreach (var item in Model)
                 {
-                    var months = item.Payments.Count;
+                    var months =
+                        ((item.EndDate.Year - item.StartDate.Year) * 12)
+                        + (item.EndDate.Month - item.StartDate.Month);
 
-                    var total = item.Payments.Sum(p => p.Amount);
+                    if (item.EndDate.Day > item.StartDate.Day)
+                    {
+                        months++;
+                    }
+
+                    if (months <= 0)
+                    {
+                        months = 1;
+                    }
+
+                    var total = months * item.Unit.RentAmount;
 
                     var (bg, fg) = item.Status switch
                     {
