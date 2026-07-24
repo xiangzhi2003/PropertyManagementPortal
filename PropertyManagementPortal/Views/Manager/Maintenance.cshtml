@@ -87,7 +87,7 @@
                                 "Medium" => ("#fef3c7", "#d97706"),
                                 _ => ("#f3f4f6", "#6b7280")
                             };
-                            <tr style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#detailModal-@r.RequestId">
+                            <tr style="cursor:pointer;" class="maintenance-row" data-detail-target="#detailModal-@r.RequestId">
                                 <td class="ps-3" style="max-width:280px;">
                                     <div class="fw-semibold">@r.Category</div>
                                     <div class="text-muted" style="font-size:.8rem;">@r.Description</div>
@@ -109,7 +109,7 @@
                                 </td>
                                 <td><span class="badge" style="background:@sbg;color:@sfg;">@r.Status</span></td>
                                 <td class="small">@(string.IsNullOrWhiteSpace(r.AssignedStaffName) ? "—" : r.AssignedStaffName)</td>
-                                <td class="text-end pe-3" onclick="event.stopPropagation();">
+                                <td class="text-end pe-3">
                                     @if (r.Status != "Completed" && Model.StaffOptions.Any())
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-primary"
@@ -213,11 +213,11 @@
                                                         <div class="text-muted mb-2" style="font-size:.75rem;">PHOTO FROM TENANT</div>
                                                         @if (!string.IsNullOrWhiteSpace(r.PhotoUrl))
                                                         {
-                                                            <a href="@r.PhotoUrl" target="_blank" rel="noopener">
-                                                                <img src="@r.PhotoUrl" alt="Issue reported at Unit @r.UnitNumber"
+                                                            <a href="#" target="_blank" rel="noopener" class="photo-link" data-photo-key="@r.PhotoUrl" style="display:none;">
+                                                                <img alt="Issue reported at Unit @r.UnitNumber"
                                                                      class="img-fluid rounded border" style="max-height:340px;" />
                                                             </a>
-                                                            <div class="text-muted mt-1" style="font-size:.75rem;">Click the image to open it full size.</div>
+                                                            <div class="text-muted mt-1 photo-loading" style="font-size:.75rem;">Loading photo&hellip;</div>
                                                         }
                                                         else
                                                         {
@@ -241,3 +241,57 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Clicking a row opens its detail modal — but not when the click lands on
+        // the Assign button or anything inside its own modal (which sits nested in
+        // the row's markup). Relying on the row's own data-bs-toggle plus
+        // event.stopPropagation() on the actions cell doesn't work: Bootstrap's
+        // modal trigger listens on `document`, so stopping propagation there also
+        // blocks the Assign button's own modal from opening. Handling it explicitly
+        // here avoids that conflict.
+        (function () {
+            document.querySelectorAll('.maintenance-row').forEach(function (row) {
+                row.addEventListener('click', function (e) {
+                    if (e.target.closest('button, a, input, textarea, select, .modal')) return;
+
+                    var target = document.querySelector(row.dataset.detailTarget);
+                    if (target) bootstrap.Modal.getOrCreateInstance(target).show();
+                });
+            });
+        })();
+
+        // API Gateway endpoint fronting the Lambda that mints presigned S3 URLs.
+        // The manager only ever views photos here, never uploads.
+        var S3_ENDPOINT = '@(ViewBag.S3Endpoint ?? "")';
+
+        (function () {
+            if (!S3_ENDPOINT) return;
+
+            document.querySelectorAll('.photo-link[data-photo-key]').forEach(function (link) {
+                var loadingLabel = link.nextElementSibling;
+                fetch(S3_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'getViewUrl', key: link.dataset.photoKey })
+                })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Request failed with status ' + res.status);
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        if (!data.viewUrl) return;
+                        link.href = data.viewUrl;
+                        link.querySelector('img').src = data.viewUrl;
+                        link.style.display = 'inline-block';
+                        if (loadingLabel) loadingLabel.style.display = 'none';
+                    })
+                    .catch(function (err) {
+                        console.error('Could not load photo', err);
+                        if (loadingLabel) loadingLabel.textContent = 'Photo unavailable';
+                    });
+            });
+        })();
+    </script>
+}

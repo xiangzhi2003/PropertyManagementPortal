@@ -75,7 +75,9 @@
                 <h6 class="section-heading mb-3">Reported Photo</h6>
                 @if (!string.IsNullOrWhiteSpace(Model.PhotoUrl))
                 {
-                    <img src="@Model.PhotoUrl" alt="Reported issue" class="img-fluid rounded border" style="max-height:340px;" />
+                    <img alt="Reported issue" class="img-fluid rounded border photo-resolve" style="max-height:340px;"
+                         data-photo-key="@Model.PhotoUrl" />
+                    <p class="text-muted small mb-0 mt-2 photo-loading">Loading photo&hellip;</p>
                 }
                 else
                 {
@@ -119,8 +121,8 @@
                                     }
                                     @if (!string.IsNullOrWhiteSpace(u.EvidencePhotoUrl))
                                     {
-                                        <a href="@u.EvidencePhotoUrl" target="_blank" class="d-inline-block mt-2">
-                                            <img src="@u.EvidencePhotoUrl" alt="Evidence" class="rounded border" style="max-height:120px;" />
+                                        <a href="#" target="_blank" class="d-inline-block mt-2 evidence-link" data-photo-key="@u.EvidencePhotoUrl" style="display:none;">
+                                            <img alt="Evidence" class="rounded border" style="max-height:120px;" />
                                         </a>
                                     }
                                     <div class="text-muted mt-1" style="font-size:.75rem;">
@@ -146,9 +148,13 @@
     <div class="modal fade" id="updateJobModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content text-start">
-                <form method="post" asp-action="UpdateJob" enctype="multipart/form-data">
+                <form method="post" asp-action="UpdateJob" id="updateJobForm">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="RequestId" value="@Model.RequestId" />
+
+                    <!-- Filled in by script once the browser has uploaded the evidence
+                         photo straight to S3. -->
+                    <input type="hidden" name="EvidenceObjectKey" id="evidenceObjectKey" />
 
                     <div class="modal-header">
                         <h5 class="modal-title">Update Job Status</h5>
@@ -180,35 +186,156 @@
                         <!-- Shown only when the target is Completed. -->
                         <div class="mb-1" id="evidenceField" style="@(canChoose ? "display:none;" : "")">
                             <label class="form-label">Evidence Photo <span class="text-danger">*</span></label>
-                            <input name="EvidencePhoto" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control"
+                            <input id="evidencePhotoInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control"
                                    @(canChoose ? "" : "required") />
                             <div class="form-text">JPG, PNG or WEBP &middot; max 5 MB. Required to close the job.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Update</button>
+                        <button type="submit" class="btn btn-primary" id="saveUpdateBtn">Save Update</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+}
 
-    @section Scripts {
-        <script>
-            (function () {
-                var sel = document.getElementById('targetStatus');
-                var field = document.getElementById('evidenceField');
-                if (!sel || !field) return;                 // InProgress case: nothing to toggle
-                var input = field.querySelector('input[name="EvidencePhoto"]');
-                function sync() {
+@section Scripts {
+    <script>
+        // API Gateway endpoint fronting the Lambda that mints presigned S3 URLs.
+        var S3_ENDPOINT = '@(ViewBag.S3Endpoint ?? "")';
+
+        var ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+        var MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+        function callS3Api(payload) {
+            return fetch(S3_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                if (!res.ok) throw new Error('Request failed with status ' + res.status);
+                return res.json();
+            });
+        }
+
+        // ── Resolve every photo on the page (tenant's + evidence history) ───────
+        (function () {
+            if (!S3_ENDPOINT) return;
+
+            document.querySelectorAll('.photo-resolve[data-photo-key]').forEach(function (img) {
+                var loadingLabel = img.nextElementSibling;
+                callS3Api({ action: 'getViewUrl', key: img.dataset.photoKey })
+                    .then(function (data) {
+                        if (!data.viewUrl) return;
+                        img.src = data.viewUrl;
+                        if (loadingLabel) loadingLabel.style.display = 'none';
+                    })
+                    .catch(function (err) {
+                        console.error('Could not load photo', err);
+                        if (loadingLabel) loadingLabel.textContent = 'Photo unavailable';
+                    });
+            });
+
+            document.querySelectorAll('.evidence-link[data-photo-key]').forEach(function (link) {
+                callS3Api({ action: 'getViewUrl', key: link.dataset.photoKey })
+                    .then(function (data) {
+                        if (!data.viewUrl) return;
+                        link.href = data.viewUrl;
+                        link.querySelector('img').src = data.viewUrl;
+                        link.style.display = 'inline-block';
+                    })
+                    .catch(function (err) {
+                        console.error('Could not load evidence photo', err);
+                    });
+            });
+        })();
+
+        // ── Update-status modal ─────────────────────────────────────────────────
+        (function () {
+            var form = document.getElementById('updateJobForm');
+            if (!form) return;   // Completed job: no modal rendered
+
+            var sel = document.getElementById('targetStatus');
+            var field = document.getElementById('evidenceField');
+            var fileInput = document.getElementById('evidencePhotoInput');
+            var keyInput = document.getElementById('evidenceObjectKey');
+            var saveBtn = document.getElementById('saveUpdateBtn');
+
+            if (sel && field) {
+                var sync = function () {
                     var completing = sel.value === 'Completed';
                     field.style.display = completing ? '' : 'none';
-                    if (input) input.required = completing;
-                }
+                    if (fileInput) fileInput.required = completing;
+                };
                 sel.addEventListener('change', sync);
                 sync();
-            })();
-        </script>
-    }
+            }
+
+            if (!fileInput || !keyInput) return;
+
+            function validate(file) {
+                var extension = file.name.split('.').pop().toLowerCase();
+                if (ALLOWED_EXTENSIONS.indexOf(extension) === -1)
+                    return 'Only JPG, PNG and WEBP images are accepted.';
+                if (file.size === 0) return 'The selected file is empty.';
+                if (file.size > MAX_PHOTO_BYTES) return 'The photo must be 5 MB or smaller.';
+                return null;
+            }
+
+            var uploading = false;
+
+            form.addEventListener('submit', function (e) {
+                if (uploading) return;
+
+                var file = fileInput.files[0];
+                if (!file) return;   // not completing, or evidence not required yet
+
+                e.preventDefault();
+
+                if (!S3_ENDPOINT) {
+                    alert('Photo upload is not configured yet. Please try again later.');
+                    return;
+                }
+
+                var error = validate(file);
+                if (error) { alert(error); return; }
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Uploading…';
+
+                callS3Api({
+                    action: 'getUploadUrl',
+                    fileName: file.name,
+                    contentType: file.type
+                })
+                    .then(function (data) {
+                        if (!data.uploadUrl || !data.key) throw new Error('No upload URL returned');
+
+                        return fetch(data.uploadUrl, {
+                            method: 'PUT',
+                            body: file,
+                            headers: { 'Content-Type': file.type }
+                        }).then(function (res) {
+                            if (!res.ok) throw new Error('Upload failed with status ' + res.status);
+                            return data.key;
+                        });
+                    })
+                    .then(function (key) {
+                        keyInput.value = key;
+                        fileInput.required = false;
+                        uploading = true;
+                        saveBtn.textContent = 'Saving…';
+                        form.submit();
+                    })
+                    .catch(function (err) {
+                        console.error('Evidence upload failed', err);
+                        alert('The photo could not be uploaded. Please check your connection and try again.');
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save Update';
+                    });
+            });
+        })();
+    </script>
 }

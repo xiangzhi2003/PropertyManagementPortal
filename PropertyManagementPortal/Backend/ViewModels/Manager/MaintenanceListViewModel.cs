@@ -36,8 +36,8 @@ namespace PropertyManagementPortal.ViewModels.Manager
         public string? Priority { get; set; }
         public string? AssignmentNotes { get; set; }
  
-        // Stored as the S3 object key; the controller swaps it for a short-lived
-        // presigned URL before the view renders it.
+        // Raw S3 object key — resolved to a viewable URL client-side by the view,
+        // since this server has no AWS credentials in the serverless upload path.
         public string? PhotoUrl { get; set; }
     }
 }

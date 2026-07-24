@@ -13,14 +13,15 @@ namespace PropertyManagementPortal.Controllers
     public class ManagerController : AppControllerBase
     {
         private const int PageSize = 10;
- 
-        // Needed to presign the tenant's maintenance photo for the detail modal.
-        private readonly IS3Service _s3Service;
- 
-        public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IS3Service s3Service)
+
+        // Fronts the Lambda that mints presigned S3 URLs for the tenant's maintenance
+        // photo shown in the detail modal — the manager only ever views, never uploads.
+        private readonly IConfiguration _config;
+
+        public ManagerController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration config)
             : base(db, userManager)
         {
-            _s3Service = s3Service;
+            _config = config;
         }
  
         // ── SCOPING HELPERS ──────────────────────────────────────────────────
@@ -619,14 +620,11 @@ namespace PropertyManagementPortal.Controllers
             page = NormalizePage(page, allRows.Count);
             var pageRows = allRows.Skip((page - 1) * PageSize).Take(PageSize).ToList();
  
-            // Presign only the rows actually rendered — the stored value is an S3
-            // object key, which the browser cannot fetch directly.
-            foreach (var r in pageRows)
-            {
-                if (!string.IsNullOrEmpty(r.PhotoUrl))
-                    r.PhotoUrl = _s3Service.GetPresignedUrl(r.PhotoUrl);
-            }
- 
+            // r.PhotoUrl holds the raw S3 object key — this server has no AWS
+            // credentials in the serverless upload path, so the view resolves each
+            // key to a viewable URL client-side by asking the Lambda.
+            ViewBag.S3Endpoint = _config["ApiGateway:S3Endpoint"] ?? "";
+
             var vm = new MaintenanceListViewModel
             {
                 Requests = pageRows,

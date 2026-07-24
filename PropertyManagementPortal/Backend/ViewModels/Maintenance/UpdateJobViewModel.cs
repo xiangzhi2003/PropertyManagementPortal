@@ -17,7 +17,8 @@ namespace PropertyManagementPortal.ViewModels.Maintenance
         [MaxLength(1000)]
         public string Notes { get; set; } = "";
 
-        // Required only when completing — enforced in the POST action.
-        public IFormFile? EvidencePhoto { get; set; }
+        // The browser uploads straight to S3 via a presigned URL and posts back only
+        // the resulting object key — required when completing, enforced in the POST.
+        public string? EvidenceObjectKey { get; set; }
     }
 }

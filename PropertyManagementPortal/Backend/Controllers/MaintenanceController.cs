@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
+using PropertyManagementPortal.Services;
 using PropertyManagementPortal.ViewModels.Maintenance;
 
 namespace PropertyManagementPortal.Controllers
@@ -11,14 +12,12 @@ namespace PropertyManagementPortal.Controllers
     [Authorize(Roles = "MaintenanceStaff")]
     public class MaintenanceController : AppControllerBase
     {
-        private readonly IWebHostEnvironment _env;
-        private readonly IS3Service _s3Service;
+        private readonly IConfiguration _config;
 
-        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env, IS3Service s3Service)
+        public MaintenanceController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration config)
             : base(db, userManager)
         {
-            _env = env;
-            _s3Service = s3Service;
+            _config = config;
         }
 
         // ── DASHBOARD ────────────────────────────────────────────────────────
@@ -197,9 +196,10 @@ namespace PropertyManagementPortal.Controllers
                 RequestId = requestData.RequestId,
                 Category = requestData.Category,
                 Description = requestData.Description,
-                PhotoUrl = requestData.PhotoUrl != null
-                            ? _s3Service.GetPresignedUrl(requestData.PhotoUrl)
-                            : null,
+                // Both photo fields hold raw S3 object keys — this server has no AWS
+                // credentials in the serverless upload path, so the view resolves them
+                // to viewable URLs client-side by asking the Lambda.
+                PhotoUrl = requestData.PhotoUrl,
                 Status = requestData.Status,
                 Priority = requestData.Priority,
                 AssignmentNotes = requestData.AssignmentNotes,
@@ -212,13 +212,13 @@ namespace PropertyManagementPortal.Controllers
                 {
                     StatusUpdate = u.StatusUpdate,
                     Notes = u.Notes,
-                    EvidencePhotoUrl = u.EvidencePhotoUrl != null 
-                                    ? _s3Service.GetPresignedUrl(u.EvidencePhotoUrl) 
-                                    : null, 
+                    EvidencePhotoUrl = u.EvidencePhotoUrl,
                     StaffName = u.StaffName,
                     UpdatedAt = u.UpdatedAt
                 }).ToList()
             };
+
+            ViewBag.S3Endpoint = _config["ApiGateway:S3Endpoint"] ?? "";
 
             return View(vm);
         }
@@ -270,26 +270,22 @@ namespace PropertyManagementPortal.Controllers
                 return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
             }
 
-            if (next == "Completed" && vm.EvidencePhoto == null)
+            if (next == "Completed" && string.IsNullOrWhiteSpace(vm.EvidenceObjectKey))
             {
                 TempData["Error"] = "A repair evidence photo is required to complete the job.";
                 return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
             }
 
-            // If a photo was supplied, it must pass the format + size checks.
-            if (vm.EvidencePhoto != null)
+            // The key is client-supplied — it came from the browser's own S3 upload,
+            // not from us — so it must look like something our Lambda could have
+            // minted before we trust it into the database.
+            if (!string.IsNullOrWhiteSpace(vm.EvidenceObjectKey) && !PhotoKeyValidator.IsValid(vm.EvidenceObjectKey))
             {
-                var photoError = ValidateEvidencePhoto(vm.EvidencePhoto);
-                if (photoError != null)
-                {
-                    TempData["Error"] = photoError;
-                    return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
-                }
+                TempData["Error"] = "The uploaded photo could not be verified. Please try again.";
+                return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
             }
 
-            string? evidenceUrl = null;
-            if (vm.EvidencePhoto != null)
-                evidenceUrl = await SaveEvidencePhotoAsync(vm.EvidencePhoto);
+            string? evidenceUrl = string.IsNullOrWhiteSpace(vm.EvidenceObjectKey) ? null : vm.EvidenceObjectKey.Trim();
 
             // 1) Write a history row for this transition.
             _db.MaintenanceUpdates.Add(new MaintenanceUpdate
@@ -321,50 +317,5 @@ namespace PropertyManagementPortal.Controllers
             return RedirectToAction(nameof(JobDetails), new { id = request.RequestId });
         }
 
-        // Allowed evidence photo formats and size cap.
-        private static readonly string[] AllowedPhotoExtensions = [".jpg", ".jpeg", ".png", ".webp"];
-        private const long MaxPhotoBytes = 5 * 1024 * 1024; // 5 MB
-
-        // Returns an error message if the upload is not an accepted image, else null.
-        private static string? ValidateEvidencePhoto(IFormFile photo)
-        {
-            if (photo.Length == 0)
-                return "The selected file is empty.";
-
-            if (photo.Length > MaxPhotoBytes)
-                return "The photo must be 5 MB or smaller.";
-
-            var ext = Path.GetExtension(photo.FileName).ToLowerInvariant();
-            if (!AllowedPhotoExtensions.Contains(ext))
-                return "Only JPG, PNG, or WEBP images are allowed.";
-
-            // Content-type guard in addition to the extension check.
-            if (!photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                return "The uploaded file is not a valid image.";
-
-            return null;
-        }
-
-        // Saves an uploaded photo to wwwroot/uploads and returns its web path.
-        // Isolated here so swapping to S3 later is a one-method change.
-        private async Task<string> SaveEvidencePhotoAsync(IFormFile photo)
-        {
-            string fileName = await _s3Service.UploadFileAsync(photo);
-            
-            /*
-            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
-            Directory.CreateDirectory(uploadsDir);
-
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
-            var fullPath = Path.Combine(uploadsDir, fileName);
-
-            using (var stream = new FileStream(fullPath, FileMode.Create))
-            {
-                await photo.CopyToAsync(stream);
-            }
-            */
-
-            return $"{fileName}";
-        }
     }
 }

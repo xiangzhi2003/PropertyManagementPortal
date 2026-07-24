@@ -5,6 +5,7 @@
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap)
 ![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs)
 ![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash--Lite-8E75B2?logo=googlegemini)
+![AWS Lambda](https://img.shields.io/badge/AWS-Lambda%20%2B%20API%20Gateway%20%2B%20S3-FF9900?logo=amazonaws)
 
 A centralized web platform for managing properties, tenants, maintenance requests, and payments. Built as a university assignment for **CT071-3-3-DDAC** (Designing and Developing ASP.NET Core Applications).
 
@@ -87,6 +88,26 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
 
 ---
 
+## Serverless Photo Upload (Task 2)
+
+Every photo in the app — the tenant's problem photo, the staff's repair-evidence photo, and the manager's read-only view of both — uploads through a serverless chain instead of through the web server:
+
+```
+Browser → API Gateway → Lambda (mints a presigned S3 URL)
+Browser → S3 directly (uploads the file — the web server never sees the bytes)
+Browser → ASP.NET MVC (posts back only the resulting object key, saved to Postgres)
+```
+
+The Lambda function's source lives in [`aws/lambda/index.mjs`](aws/lambda/index.mjs); the console setup steps (bucket, CORS, Lambda, API Gateway) are documented in [`aws/README.md`](aws/README.md). The app side needs no AWS SDK and no AWS credentials — only one config value:
+
+```json
+"ApiGateway": { "S3Endpoint": "https://<your-api-id>.execute-api.ap-southeast-1.amazonaws.com/prod/photos" }
+```
+
+`Backend/Services/PhotoKeyValidator.cs` checks the shape of every object key before it's trusted into the database, since it arrives from the client after its own direct upload to S3.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -97,6 +118,7 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
 | Authentication | ASP.NET Core Identity + Google OAuth 2.0 |
 | Payments | Stripe.net |
 | AI | Google Gemini API (`gemini-3.1-flash-lite`) — Admin Dashboard AI summary |
+| Serverless | AWS Lambda + API Gateway + S3 — presigned-URL photo upload (Task 2) |
 | UI | Bootstrap 5, Chart.js 4, Inter font, custom CSS |
 
 ---
@@ -131,6 +153,9 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
      "Gemini": {
        "ApiKey": "<your-gemini-api-key>"
      },
+     "ApiGateway": {
+       "S3Endpoint": "<your-api-gateway-invoke-url>/photos"
+     },
      "Logging": {
        "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" }
      },
@@ -138,6 +163,8 @@ All four role panels — Admin, Property Manager, Tenant, and Maintenance Staff 
    }
    ```
    Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — only needed for the Admin Dashboard's "Generate AI Summary" button; the rest of the app works without it.
+
+   `ApiGateway:S3Endpoint` powers photo uploads (see [Serverless Photo Upload](#serverless-photo-upload-task-2) above) — set up your own bucket/Lambda/API Gateway following [`aws/README.md`](aws/README.md), or leave it blank; every upload button then shows "not configured yet" instead of erroring, and the rest of the app works normally.
 
 3. **Apply database migrations**
    ```bash
@@ -247,6 +274,9 @@ PropertyManagementPortal/                        ← git repo / solution root
     │       ├── Maintenance/
     │       └── Shared/                           NotificationsViewModel
     │
+    ├── Backend/Services/
+    │   └── PhotoKeyValidator.cs                  validates S3 object keys posted back by the browser
+    │
     ├── Program.cs                                app startup, middleware, DI, auth config
     │
     │  # ── DATABASE ───────────────────────────────────────────────────────
@@ -293,6 +323,12 @@ PropertyManagementPortal/                        ← git repo / solution root
     │  # ── CONFIG ──────────────────────────────────────────────────────────
     ├── appsettings.json                         DB + Google OAuth secrets (gitignored)
     └── appsettings.example.json                 safe template to share with teammates
+
+# ── SERVERLESS (Task 2) ─────────────────────────────────────────────────
+aws/                                              not part of the .NET project — reference only
+├── lambda/index.mjs                              Lambda source, paste into the AWS console
+├── s3-cors.json                                  bucket CORS config
+└── README.md                                     console setup steps: bucket → Lambda → API Gateway
 ```
 
 ---

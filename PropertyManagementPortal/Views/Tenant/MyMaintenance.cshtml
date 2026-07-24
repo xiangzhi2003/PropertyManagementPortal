@@ -63,9 +63,10 @@ else
                         <td>
                             @if (!string.IsNullOrEmpty(r.PhotoUrl))
                             {
-                                <a href="@r.PhotoUrl" target="_blank">
+                                <a href="#" target="_blank" class="photo-link" data-photo-key="@r.PhotoUrl" style="display:none;">
                                     View Photo
                                 </a>
+                                <span class="text-muted photo-loading small">Loading&hellip;</span>
                             }
                             else
                             {
@@ -124,9 +125,13 @@ else
         <div class="modal-content">
 
 
-            <form asp-action="Maintenance" method="post" enctype="multipart/form-data">
+            <form asp-action="Maintenance" method="post" id="maintenanceForm">
 
                 @Html.AntiForgeryToken()
+
+                <!-- Filled in by script once the browser has uploaded the photo
+                     straight to S3. Empty when no photo is attached. -->
+                <input type="hidden" name="PhotoObjectKey" id="photoObjectKey" />
 
 
                 <div class="modal-header">
@@ -216,9 +221,10 @@ else
                     </label>
 
                     <input type="file"
-                        name="Photo"
+                        id="photoInput"
                         class="form-control"
-                        accept="image/*" />
+                        accept=".jpg,.jpeg,.png,.webp" />
+                    <div class="form-text">JPG, PNG or WEBP &middot; max 5 MB.</div>
 
 
                 </div>
@@ -234,7 +240,7 @@ else
                     </button>
 
 
-                    <button class="btn btn-primary">
+                    <button class="btn btn-primary" id="submitRequestBtn">
                         Submit
                     </button>
 
@@ -249,3 +255,115 @@ else
     </div>
 
 </div>
+
+@section Scripts {
+    <script>
+        // API Gateway endpoint fronting the Lambda that mints presigned S3 URLs.
+        var S3_ENDPOINT = '@(ViewBag.S3Endpoint ?? "")';
+
+        var ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+        var MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+        function callS3Api(payload) {
+            return fetch(S3_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                if (!res.ok) throw new Error('Request failed with status ' + res.status);
+                return res.json();
+            });
+        }
+
+        // ── Resolve photo keys already stored on submitted requests ─────────────
+        (function () {
+            var links = document.querySelectorAll('.photo-link[data-photo-key]');
+            if (!links.length || !S3_ENDPOINT) return;
+
+            links.forEach(function (link) {
+                var loadingLabel = link.nextElementSibling;
+                callS3Api({ action: 'getViewUrl', key: link.dataset.photoKey })
+                    .then(function (data) {
+                        if (!data.viewUrl) return;
+                        link.href = data.viewUrl;
+                        link.style.display = '';
+                        if (loadingLabel) loadingLabel.style.display = 'none';
+                    })
+                    .catch(function (err) {
+                        console.error('Could not load photo', err);
+                        if (loadingLabel) loadingLabel.textContent = 'Photo unavailable';
+                    });
+            });
+        })();
+
+        // ── Submit Request modal: upload photo straight to S3 before posting ────
+        (function () {
+            var form = document.getElementById('maintenanceForm');
+            var fileInput = document.getElementById('photoInput');
+            var keyInput = document.getElementById('photoObjectKey');
+            var submitBtn = document.getElementById('submitRequestBtn');
+            if (!form || !fileInput || !keyInput) return;
+
+            function validate(file) {
+                var extension = file.name.split('.').pop().toLowerCase();
+                if (ALLOWED_EXTENSIONS.indexOf(extension) === -1)
+                    return 'Only JPG, PNG and WEBP images are accepted.';
+                if (file.size === 0) return 'The selected file is empty.';
+                if (file.size > MAX_PHOTO_BYTES) return 'The photo must be 5 MB or smaller.';
+                return null;
+            }
+
+            var uploading = false;
+
+            form.addEventListener('submit', function (e) {
+                if (uploading) return;   // second pass, after the upload finished
+
+                var file = fileInput.files[0];
+                if (!file) return;       // no photo attached — submit as-is
+
+                e.preventDefault();
+
+                if (!S3_ENDPOINT) {
+                    alert('Photo upload is not configured yet. Submit without a photo, or try again later.');
+                    return;
+                }
+
+                var error = validate(file);
+                if (error) { alert(error); return; }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading…';
+
+                callS3Api({
+                    action: 'getUploadUrl',
+                    fileName: file.name,
+                    contentType: file.type
+                })
+                    .then(function (data) {
+                        if (!data.uploadUrl || !data.key) throw new Error('No upload URL returned');
+
+                        return fetch(data.uploadUrl, {
+                            method: 'PUT',
+                            body: file,
+                            headers: { 'Content-Type': file.type }
+                        }).then(function (res) {
+                            if (!res.ok) throw new Error('Upload failed with status ' + res.status);
+                            return data.key;
+                        });
+                    })
+                    .then(function (key) {
+                        keyInput.value = key;
+                        uploading = true;
+                        submitBtn.textContent = 'Saving…';
+                        form.submit();
+                    })
+                    .catch(function (err) {
+                        console.error('Photo upload failed', err);
+                        alert('The photo could not be uploaded. Please check your connection and try again.');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit';
+                    });
+            });
+        })();
+    </script>
+}

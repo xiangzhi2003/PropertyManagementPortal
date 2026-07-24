@@ -5,7 +5,7 @@ namespace PropertyManagementPortal.ViewModels.Maintenance
         public int RequestId { get; set; }
         public string Category { get; set; } = "";
         public string Description { get; set; } = "";
-        public string? PhotoUrl { get; set; }          // tenant's photo of the issue
+        public string? PhotoUrl { get; set; }          // tenant's photo of the issue — raw S3 object key
         public string Status { get; set; } = "";
         public string? Priority { get; set; }
         public string? AssignmentNotes { get; set; }
@@ -25,7 +25,7 @@ namespace PropertyManagementPortal.ViewModels.Maintenance
     {
         public string StatusUpdate { get; set; } = "";
         public string? Notes { get; set; }
-        public string? EvidencePhotoUrl { get; set; }
+        public string? EvidencePhotoUrl { get; set; }  // raw S3 object key — resolved client-side
         public string StaffName { get; set; } = "";
         public DateTime UpdatedAt { get; set; }
     }

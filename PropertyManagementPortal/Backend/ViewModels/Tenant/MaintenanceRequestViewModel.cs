@@ -15,7 +15,9 @@ namespace PropertyManagementPortal.ViewModels.Tenant
 
         public string Status { get; set; } = string.Empty;
 
-        public IFormFile? Photo { get; set; }
+        // The browser uploads straight to S3 via a presigned URL and posts back only
+        // the resulting object key — the file itself never touches this server.
+        public string? PhotoObjectKey { get; set; }
 
         public List<SelectListItem> Units { get; set; } = new();
     }

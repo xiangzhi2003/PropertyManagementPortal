@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using PropertyManagementPortal.Data;
 using PropertyManagementPortal.Models;
+using PropertyManagementPortal.Services;
 using PropertyManagementPortal.ViewModels.Tenant;
 using Stripe;
 using Stripe.Checkout;
@@ -15,13 +16,11 @@ namespace PropertyManagementPortal.Controllers
     public class TenantController : AppControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly IS3Service _s3Service;
 
-        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IS3Service s3Service, IConfiguration configuration)
+        public TenantController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IConfiguration configuration)
         : base(db, userManager)
         {
             _configuration = configuration;
-            _s3Service = s3Service;
         }
 
         public async Task<IActionResult> Dashboard()
@@ -245,16 +244,18 @@ namespace PropertyManagementPortal.Controllers
         public async Task<IActionResult> Maintenance(MaintenanceRequestViewModel vm)
         {
             var user = await _userManager.GetUserAsync(User);
-            string? photoFileName = null;
-
-            if (vm.Photo != null)
-            {
-                photoFileName = await _s3Service.UploadFileAsync(vm.Photo);
-            }
 
             if (user == null)
             {
                 return Challenge();
+            }
+
+            // The key is client-supplied — it came from the browser's own S3 upload,
+            // not from us — so it must look like something our Lambda could have
+            // minted before we trust it into the database.
+            if (!string.IsNullOrWhiteSpace(vm.PhotoObjectKey) && !PhotoKeyValidator.IsValid(vm.PhotoObjectKey))
+            {
+                ModelState.AddModelError(nameof(vm.PhotoObjectKey), "The uploaded photo could not be verified. Please try again.");
             }
 
             if (!ModelState.IsValid)
@@ -280,7 +281,7 @@ namespace PropertyManagementPortal.Controllers
                 UnitId = vm.UnitId,
                 Category = vm.Category,
                 Description = vm.Description,
-                PhotoUrl = photoFileName,
+                PhotoUrl = string.IsNullOrWhiteSpace(vm.PhotoObjectKey) ? null : vm.PhotoObjectKey.Trim(),
                 Status = "Submitted",
                 CreatedAt = DateTime.UtcNow
             };
@@ -313,14 +314,10 @@ namespace PropertyManagementPortal.Controllers
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
 
-            foreach (var r in requests)
-            {
-                if (!string.IsNullOrEmpty(r.PhotoUrl))
-                {
-                    r.PhotoUrl = _s3Service.GetPresignedUrl(r.PhotoUrl);
-                }
-            }
-
+            // r.PhotoUrl holds the raw S3 object key — the view resolves it to a
+            // viewable URL client-side by asking the Lambda, since this server has
+            // no AWS credentials of its own in the serverless upload path.
+            ViewBag.S3Endpoint = _configuration["ApiGateway:S3Endpoint"] ?? "";
 
             ViewBag.Units = await _db.Tenancies
                 .Include(t => t.Unit)
