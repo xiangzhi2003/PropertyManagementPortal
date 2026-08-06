@@ -8,11 +8,7 @@
     var months = 0;
     var current = startDate;
 
-    while (current < endDate)
-    {
-        months++;
-        current = current.AddMonths(1);
-    }
+    while (startDate.AddMonths(months) < endDate) months++;
 
     var total = months * Model.RentAmount;
 }
